@@ -1,11 +1,30 @@
 import { buildings, type Building } from '../data/buildings';
 import {
-  airSettings, commitShift, defaultPlan, harvestTarget, phaseLabel, projectShift, recover,
-  resourceLimits, scenarios, shiftCount, shiftDemand, startMission,
-  type MissionState, type PresentMissionEvent, type Scenario, type ShiftPlan, type ShiftProjection,
-} from '../mission/solarStorm';
+  commitDay, defaultPlan, hasParticleRisk, lightSettings, lunarTraining, previewDay, startMission, stormPhase,
+  type DailyPlan, type DayResult, type Hazard, type Scenario,
+} from '../mission/dailyMission';
+import { createSave, parseSave, saveKey, type MissionSave } from '../mission/persistence';
+import type { PresentMissionEvent } from '../mission/presentation';
 import type { mountBuildingControls } from './buildingControls';
 import { mountMissionRadio } from './missionRadio';
+import type { MotionPreference } from './motionPreference';
+
+const lightSteps = ['off', 'low', 'full'] as const;
+const rules = lunarTraining;
+const forecast = {
+  clear: 'Particle readings are quiet.',
+  warning: `Particle alert. Plan to use the shelter on days ${rules.stormStart} and ${rules.stormStart + 1}.`,
+  rising: 'Particle levels are rising. Move the crew into the shelter.',
+  peak: 'Particle levels are highest today. Keep the crew in the shelter.',
+  recovery: 'Particle levels have eased. The crew can return to the habitat.',
+};
+const hazardMessage: Record<Hazard, string> = {
+  exposure: 'The crew was exposed to dangerous particles outside the shelter.',
+  air: 'The reserve tank could not supply enough air.',
+  power: 'The battery could not run essential systems before the panels began charging.',
+  food: 'There was too little food for the crew at the start of the day.',
+  water: 'There was too little drinking water at the start of the day.',
+};
 
 function byId<T extends HTMLElement = HTMLElement>(id: string) {
   return document.getElementById(id) as T;
@@ -15,34 +34,61 @@ export function mountMission(
   navigation: ReturnType<typeof mountBuildingControls>,
   selectScene: (id?: Building['id']) => void,
   present: PresentMissionEvent,
+  motion: MotionPreference,
 ) {
-  const form = byId<HTMLFormElement>('shift-form');
+  const form = byId<HTMLFormElement>('day-form');
   const location = byId<HTMLSelectElement>('location');
   const airMode = byId<HTMLSelectElement>('air-mode');
-  const lights = byId<HTMLSelectElement>('lights');
-  const submit = byId<HTMLButtonElement>('commit-shift');
-  const report = byId('shift-report');
+  const lights = byId<HTMLInputElement>('lights');
+  const recovery = byId<HTMLInputElement>('water-recovery');
+  const submit = byId<HTMLButtonElement>('end-day');
+  const report = byId('day-report');
+  const proceed = byId<HTMLButtonElement>('continue-day');
   const facility = byId('facility');
   const heading = byId('building-name');
   const resolution = byId('resolution');
   const debrief = byId('debrief');
-  const scenario = byId<HTMLSelectElement>('scenario');
   const panels = { farm: byId('farm-panel'), control: byId('control-panel'), comms: byId('comms-panel') };
-  const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const radio = mountMissionRadio(() => present({ type: 'forecast' }));
+  const saveStatus = byId('save-status');
 
-  let state = startMission();
+  let stored: string | null = null;
+  try { stored = localStorage.getItem(saveKey); }
+  catch { saveStatus.textContent = 'This browser has blocked saving. Keep this tab open to finish the mission.'; }
+  const restored = stored ? parseSave(stored) : undefined;
+
+  let save = restored?.save ?? createSave('standard');
+  let state = restored?.state ?? startMission('standard');
+  let last = restored?.last;
   let selected: Building['id'] | undefined;
-  let helpCount = 0;
   let timer = 0;
-  let captionTimer = 0;
   let finish: (() => void) | undefined;
   let live = false;
+  let stale = false;
+
+  function writeSave(next: MissionSave, replace = false) {
+    try {
+      const current = localStorage.getItem(saveKey);
+      if (!replace && current !== stored) {
+        stale = true;
+        saveStatus.textContent = 'This mission changed in another tab. Reload to continue from the saved turn.';
+        return false;
+      }
+      const value = JSON.stringify(next);
+      localStorage.setItem(saveKey, value);
+      stored = value;
+      saveStatus.textContent = '';
+    } catch {
+      saveStatus.textContent = 'Progress could not be saved. Keep this tab open to finish the mission.';
+    }
+    save = next;
+    return true;
+  }
 
   function openBuilding(building: Building, focus = true) {
-    if (!live || finish || state.outcome !== 'active') return;
+    if (!live || !save.reviewed || state.outcome !== 'active') return;
     selected = building.id;
-    for (const key of Object.keys(panels) as Building['id'][]) panels[key].hidden = key !== selected;
+    for (const [key, panel] of Object.entries(panels)) panel.hidden = key !== selected;
     heading.textContent = building.name;
     byId('building-description').textContent = building.description;
     facility.style.setProperty('--facility-color', `#${building.color.toString(16)}`);
@@ -54,263 +100,265 @@ export function mountMission(
   }
 
   function closeFacility(restoreFocus = false) {
-    const wasSelected = selected;
+    const previous = selected;
     selected = undefined;
     facility.hidden = true;
     navigation.select();
     selectScene();
-    if (wasSelected && restoreFocus) navigation.tabs[wasSelected].focus();
+    if (previous && restoreFocus) navigation.tabs[previous].focus();
   }
 
-  byId('close-facility').addEventListener('click', () => closeFacility(true));
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && selected && !(event.target instanceof HTMLSelectElement)) closeFacility(true);
-  });
+  function setDraft(plan: DailyPlan) {
+    location.value = plan.location;
+    airMode.value = plan.airMode;
+    lights.value = String(lightSteps.indexOf(plan.lights));
+    recovery.checked = plan.recovery;
+  }
 
-  function draft(): ShiftPlan {
+  function draft(): DailyPlan {
     return {
-      location: location.value as ShiftPlan['location'],
-      airMode: airMode.value as ShiftPlan['airMode'],
-      lights: lights.value as ShiftPlan['lights'],
+      location: location.value === 'shelter' ? 'shelter' : 'habitat',
+      airMode: airMode.value === 'reserve' ? 'reserve' : 'normal',
+      lights: lightSteps[lights.valueAsNumber],
+      recovery: recovery.checked,
     };
+  }
+
+  function renderState() {
+    const limits = { battery: rules.capacity.battery, air: rules.capacity.air, food: rules.startingFood };
+    for (const key of ['battery', 'air', 'food'] as const) {
+      const limit = limits[key];
+      const meter = byId<HTMLMeterElement>(key);
+      meter.max = limit;
+      meter.value = state[key];
+      byId(`${key}-fill`).style.setProperty('--fill', String(Math.min(1, state[key] / limit)));
+      byId(`${key}-value`).textContent = key === 'food' ? `${state.food} units` : `${state[key]} / ${limit}`;
+    }
+    byId('resource-alert').textContent = state.water <= 2 ? `Low drinking water · ${state.water} left` : '';
+    byId('food-value').title = `${Math.floor(state.food / rules.foodPerDay)} days of food at the current daily rate`;
+    const day = state.completedDays + 1;
+    radio.render(day, state.outcome);
+    byId('day-title').textContent = !save.reviewed
+      ? `Day ${state.completedDays} of ${rules.days} · Report`
+      : state.outcome === 'active' ? `Day ${day} of ${rules.days} · Plan` : 'Mission complete';
+    byId('day-briefing').textContent = state.outcome === 'active' && save.reviewed
+      ? `Day ${day} forecast · ${rules.generation[day - 1]} solar power. ${forecast[stormPhase(day)]}` : '';
   }
 
   function renderPreview() {
+    if (state.outcome !== 'active' || !save.reviewed) return;
     const plan = draft();
-    const result = projectShift(state, plan);
-    const { addedPower, addedAir } = shiftDemand(state);
-    for (const mode of ['normal', 'reserve'] as const) {
-      const costs = airSettings[mode];
-      const air = costs.reserveUsed ? `, uses ${costs.reserveUsed + addedAir} air` : '';
-      airMode.options[mode === 'normal' ? 0 : 1].textContent =
-        `${mode === 'normal' ? 'Normal' : 'Use reserve'} (${costs.power + addedPower} power${air})`;
-    }
-    const peak = shiftDemand(state, 1);
-    byId('phase-demand').textContent = addedPower
-      ? `Peak demand: the air system needs +${addedPower} power. Reserve mode also uses +${addedAir} air.`
-      : `Normal air saves the reserve. At peak, air uses ${peak.addedPower} extra power.`;
-    byId('plan-summary').textContent = `Draft · ${result.protectedCrew ? 'Shelter' : 'Standard room'} · ${plan.airMode} air · lights ${plan.lights}`;
-    byId('plan-preview').textContent = result.affordable
-      ? `Spend ${result.powerUsed} power → ${result.battery} battery, ${result.air} air, ${result.harvest} harvest ${result.harvest === 1 ? 'point' : 'points'} after the shift.`
-      : `Needs ${result.powerUsed} power; only ${state.battery} left. Reduce the draft cost to continue.`;
+    const result = previewDay(state, plan);
+    const peak = result.phase === 'peak' ? 1 : 0;
+    const showWater = result.day > 1;
+    const condition = hasParticleRisk(result.phase) ? 'Shelter required' : 'Habitat open';
+    const demand = result.essentialPower + result.recoveryPower + result.lightPower;
+    const light = lightSettings[plan.lights];
+    const warnings = result.hazards.length ? ['This plan will interrupt training.', ...result.hazards.map(hazard => hazardMessage[hazard])] : [];
+    if (result.powerGap) warnings.unshift(`Short by ${result.powerGap} power after charging. Lower the lights or switch off water recovery.`);
+    if (result.next.outcome === 'active' && result.next.food < rules.foodPerDay) warnings.push('Tomorrow starts short of food. Advance the harvest today while you still have meals.');
+    if (result.next.outcome === 'active' && result.next.water < rules.waterPerDay) warnings.push('Tomorrow starts without drinking water. Run the recycler today.');
+    if (result.next.outcome === 'shortfall') warnings.push('This plan falls short of the final supply target.');
+    if (stale) warnings.unshift('Reload this tab to continue from the saved turn.');
 
-    const warnings = [];
-    if (!result.protectedCrew) warnings.push('The standard room leaves the crew exposed. This will end the drill.');
-    if (result.air === 0) warnings.push('The air reserve will run out. This will end the drill.');
+    byId('tower-phase').textContent = condition;
+    byId('tower-crew').textContent = `Crew of ${rules.crewSize} · Chosen location ${plan.location} · Reserve air ${state.air}`;
+    byId('tower-power').textContent = `Generation +${result.generation} · Demand −${demand} · Battery ${state.battery} → ${result.next.battery}`;
+    byId('forecast-detail').textContent = forecast[result.phase];
+    byId('tower-note').textContent = `Essential systems draw battery power before solar charging. The battery holds up to ${rules.capacity.battery} power.`;
+    byId('phase-demand').textContent = 'CO₂ removal runs in both modes. Reserve mode uses stored air and saves one power.';
+    airMode.options[0].textContent = `Normal supply (${2 + peak} power)`;
+    airMode.options[1].textContent = `Use reserve (${1 + peak} power, ${2 + peak} air)`;
+    byId('tower-water').hidden = !showWater;
+    byId('tower-water').textContent = `Drinking water ${state.water} → ${result.next.water}. Change recovery in the Farm.`;
+    byId('water-panel').hidden = !showWater;
+    recovery.disabled = !showWater;
+    byId('water-outlook').textContent = `${state.water} → ${result.next.water} water. Crew uses 1 daily. Growing crops use 1 more. This plan recovers ${result.recovered}.`;
+    const growth = result.growth ? ` adds ${result.growth} progress` : ' makes no progress';
+    const earliest = Math.ceil((rules.cropTarget - state.crop) / lightSettings.full.growth);
+    byId('crop-outlook').textContent = result.harvest
+      ? `${state.crop} of ${rules.cropTarget} now. Your crop matures today and adds ${result.harvest} food for future days.`
+      : `${state.crop} of ${rules.cropTarget} now. This plan${growth}. A mature crop adds ${rules.harvestFood} food. Earliest harvest in ${earliest} ${earliest === 1 ? 'day' : 'days'} at Full with water.`;
+    byId('light-output').textContent = `${light.label} · ${light.power} power · +${result.growth} crop progress`;
+    lights.setAttribute('aria-valuetext', light.label);
+    byId('plan-summary').textContent = `Tomorrow’s reserves · ${result.next.battery} battery · ${result.next.air} air · ${result.next.food} food`;
+    byId('plan-preview').textContent = `+${result.generation} solar power · −${demand} used · −${rules.foodPerDay} food${result.harvest ? ` · +${result.harvest} harvest` : ''}`;
     const warning = byId('plan-warning');
     warning.textContent = warnings.join(' ');
     warning.hidden = !warnings.length;
-    submit.disabled = !result.affordable || !live || Boolean(finish);
-    const note = !result.protectedCrew ? 'Particle readings are climbing. The standard room has less shielding.'
-      : plan.airMode === 'reserve' && state.air < resourceLimits.air ? 'Reserve air saves power, but this tank was already used last shift.'
-        : result.affordable && state.completedShifts === 0 && result.battery < 5 ? 'This draft is affordable now. What will you have left for the peak?'
-          : !result.growth ? 'With the lights off, the farm makes no progress toward tomorrow’s harvest.'
-            : state.completedShifts === 0 ? 'The crew and farm share this battery. The peak is still ahead.'
-              : 'Check both reserves before the peak: battery for the systems and air for the crew.';
-    byId('tower-note').textContent = note;
-    byId('tower-power').textContent = `Battery: ${state.battery} · Draft cost: ${result.powerUsed} power`;
-    const cropCondition = state.harvest >= harvestTarget ? 'On target'
-      : state.completedShifts && !state.harvest ? 'Behind schedule' : 'Still growing';
-    byId('crop-outlook').textContent = `${cropCondition} · ${state.harvest} of ${harvestTarget} points now. This draft adds ${result.growth} → ${result.harvest} points.`;
-    submit.textContent = `Run shift ${state.completedShifts + 1}`;
+    submit.disabled = !live || stale || Boolean(result.powerGap);
+    submit.dataset.turn = `${save.runId}/${result.day}`;
   }
 
-  function renderState(resources = true) {
-    if (resources) {
-      for (const key of ['battery', 'air', 'harvest'] as const) {
-        const limit = key === 'battery' ? scenarios[state.scenario].battery : resourceLimits[key];
-        const meter = byId<HTMLMeterElement>(key);
-        meter.max = limit;
-        meter.value = state[key];
-        byId(`${key}-fill`).style.setProperty('--fill', String(state[key] / limit));
-        byId(`${key}-value`).textContent = key === 'harvest' ? `${state.harvest} pts` : `${state[key]} / ${limit}`;
-      }
-    }
-    byId('shift-title').textContent = `${phaseLabel[state.phase]} · ${state.outcome === 'active'
-      ? `Shift ${Math.min(shiftCount, state.completedShifts + 1)} of ${shiftCount}` : 'Drill complete'}`;
-    byId('tower-phase').textContent = state.phase === 'warning'
-      ? 'Warning · Particle readings rising'
-      : 'Rising · High particle risk; peak next';
-    const crew = state.crew === 'shelter' ? 'protected in the shelter' : 'in habitat · shelter ready';
-    byId('tower-crew').textContent = `Crew: ${crew} · Air reserve: ${state.air}`;
-    radio.render(state);
-  }
-
-  byId('ask-help').addEventListener('click', () => {
-    const message = helpCount++ === 0
-      ? 'Lights and air share a battery. Using the air tank can free power for the farm, but the tank does not refill during the drill.'
-      : state.completedShifts === 0
-        ? 'Try shelter, reserve air and full lights for this shift. Save enough battery to use normal air at peak.'
-        : 'Try shelter and normal air at peak. Check which light setting brings your harvest closest to 3 points.';
-    byId('help-text').textContent = message;
-    byId('ask-help').textContent = 'Show a suggested action';
-    byId<HTMLButtonElement>('ask-help').disabled = helpCount >= 2;
-  });
-
-  function reportLine(result: ShiftProjection) {
-    if (state.outcome === 'air' && !result.protectedCrew) return 'The standard room left the crew exposed, and the air reserve ran out.';
-    if (state.outcome === 'air') return 'The crew entered the shelter, but the air reserve ran out.';
-    if (state.outcome === 'exposure') return 'The standard room left the crew exposed to solar particles.';
-    return result.growth
-      ? `The shelter protected the crew, and the lights added ${result.growth} harvest ${result.growth === 1 ? 'point' : 'points'}.`
-      : 'The shelter protected the crew, but the farm gained no harvest points with the lights off.';
-  }
-
-  function renderReport(result: ShiftProjection, before: MissionState) {
-    byId('report-title').textContent = `Shift ${state.completedShifts} result`;
-    byId('report-line').textContent = reportLine(result);
-    const messages = [
-      `The outpost used ${result.powerUsed} power. ${state.battery} remains.`,
-      state.air === before.air ? `Normal air kept the reserve at ${state.air}.`
-        : `Reserve mode used ${before.air - state.air} air. ${state.air} remains.`,
-      `Tomorrow’s harvest: ${state.harvest} points. Target: ${harvestTarget}.`,
+  function renderReport(result: DayResult) {
+    byId('report-title').textContent = `Day ${result.day} report`;
+    byId('report-line').textContent = result.hazards.length ? result.hazards.map(hazard => hazardMessage[hazard]).join(' ')
+      : result.harvest ? `Harvest ready. The crew added ${result.harvest} food for future days.`
+        : hasParticleRisk(result.phase) ? 'The crew stayed protected through today’s particle alert.'
+          : result.growth ? `The crew stayed safe. Crops gained ${result.growth} progress.` : 'The crew stayed safe. Crop progress paused.';
+    const items = [
+      `Solar panels generated ${result.generation}. Systems needed ${result.essentialPower + result.recoveryPower + result.lightPower}. Battery now ${state.battery}.`,
+      `${result.eaten} food used for today’s meals · ${state.food} left.`,
+      result.airUsed ? `Spent ${result.airUsed} reserve air · ${state.air} left.` : `Reserve air unchanged · ${state.air} left.`,
+      `Crop progress ${state.crop} of ${rules.cropTarget}. ${result.harvest ? 'Next crop started.' : 'The next harvest will add food after it matures.'}`,
     ];
-    if (state.outcome === 'active') {
-      const peak = shiftDemand(state);
-      messages.push(`The peak is next. Allow ${peak.addedPower} extra power for air; reserve mode needs ${peak.addedAir} more air too.`);
-    }
-    byId('report-items').replaceChildren(...messages.map((message) => {
+    if (result.lostGeneration) items.push(`The battery was full during charging. ${result.lostGeneration} solar power could not be stored.`);
+    if (result.day > 1) items.push(`Recovered ${result.recovered} water · ${state.water} drinking water left.`);
+    byId('report-items').replaceChildren(...items.map(text => {
       const item = document.createElement('li');
-      item.textContent = message;
+      item.textContent = text;
       return item;
     }));
-    byId<HTMLDetailsElement>('report-details').open = false;
+    byId<HTMLDetailsElement>('report-details').open = result.hazards.length > 0;
+    proceed.textContent = state.outcome === 'active' ? `Plan day ${result.day + 1}` : 'View debrief';
+    proceed.disabled = stale;
     report.hidden = false;
+    byId('report-title').focus();
   }
 
   function renderDebrief() {
-    if (state.outcome === 'active') return;
-    const titles = {
-      secured: 'Crew protected; harvest secured',
-      delayed: 'Crew protected; harvest delayed',
-      air: 'Training interrupted',
-      exposure: 'Training interrupted',
-    };
-    const details = {
-      secured: 'Later, the crew picked the ripe leaves and brought them to the habitat to share with their stored meal.',
-      delayed: state.harvest === 0
-        ? 'Later, the crop still needed time. The crew ate stored provisions. Try another light plan to prepare a fresh side.'
-        : 'Later, a few leaves were ready to share. Stored provisions kept everyone fed while the rest of the crop grew.',
-      air: state.crew === 'standard'
-        ? 'The standard room left the crew exposed and reserve mode ran the tank out. Try the shelter with enough air for both shifts.'
-        : 'Reserve mode drew air from the tank until it ran out. Try normal air during the peak.',
-      exposure: 'Less shielding in the standard room left the crew exposed when particle risk rose. Try sheltering the crew for both shifts.',
-    };
-    const food = state.harvest >= harvestTarget ? 'Fresh side ready' : state.harvest ? 'Small fresh side' : 'No fresh side yet';
-    const safe = state.phase === 'recovery';
-    byId('outcome').textContent = titles[state.outcome];
-    byId('outcome-detail').textContent = details[state.outcome];
-    byId('outcome-resources').textContent = `${state.battery} battery · ${state.air} air · ${state.harvest} of ${harvestTarget} harvest points${safe ? ` · ${food}` : ''}`;
+    byId('outcome').textContent = state.outcome === 'ready' ? 'Crew safe and outpost ready'
+      : state.outcome === 'shortfall' ? 'Crew safe, supplies below target' : 'Training interrupted';
+    byId('outcome-detail').textContent = state.outcome === 'interrupted' ? last!.hazards.map(hazard => hazardMessage[hazard]).join(' ')
+      : `The crew finished all ${rules.days} days and brought in ${state.harvests} ${state.harvests === 1 ? 'harvest' : 'harvests'}. The readiness target was ${rules.readiness.battery} battery and ${rules.readiness.food} food.`;
+    byId('outcome-resources').textContent = `${state.battery} battery · ${state.air} reserve air · ${state.food} food · ${state.water} water`;
+    byId<HTMLSelectElement>('scenario').value = state.scenario;
     debrief.hidden = false;
     byId('outcome').focus();
-    present({ type: 'debrief', state });
+    present({ type: 'debrief', state, phase: last?.phase ?? 'clear' });
   }
 
-  function stopResolution() {
-    clearTimeout(timer);
-    clearTimeout(captionTimer);
-    finish = undefined;
-    resolution.hidden = true;
-  }
-
-  function playResolution(duration: number, onFinish: () => void, caption: string) {
-    const complete = () => { stopResolution(); onFinish(); };
-    if (motion.matches) return complete();
-    finish = complete;
-    resolution.hidden = false;
-    byId('resolution-title').focus();
-    captionTimer = window.setTimeout(() => { byId('resolution-caption').textContent = caption; }, duration * .62);
-    timer = window.setTimeout(complete, duration);
-  }
-
-  function playRecovery() {
-    state = recover(state);
+  function showCurrent() {
     renderState();
-    byId('resolution-phase').textContent = 'Recovery · Later…';
-    byId('resolution-title').textContent = state.harvest ? 'Bringing fresh food back' : 'Checking the greenhouse';
-    document.querySelector('#risk-trace')!.setAttribute('hidden', '');
-    byId('resolution-readout').textContent = 'Simulated particle risk has eased. The crew can leave the shelter.';
-    byId('resolution-caption').textContent = state.harvest
-      ? 'The crew is picking ripe leaves from crops that were already growing.'
-      : 'The crop needs more time. Stored food is ready at the habitat.';
-    present({ type: 'recovery', state, duration: motion.matches ? 0 : 5500 });
-    playResolution(5500, renderDebrief, state.harvest
-      ? 'Fresh leaves arrive at the habitat for the crew’s meal.' : 'The crew heads back to the habitat for their meal.');
+    report.hidden = true;
+    debrief.hidden = true;
+    const planning = state.outcome === 'active' && save.reviewed;
+    form.hidden = !planning;
+    navigation.enable(planning);
+    if (!save.reviewed && last) renderReport(last);
+    else if (!planning) renderDebrief();
+    else {
+      renderPreview();
+      if (state.completedDays === 0 && matchMedia('(max-width: 760px)').matches) {
+        closeFacility();
+        navigation.tabs.control.focus({ preventScroll: true });
+      } else openBuilding(state.completedDays === 1 ? buildings[0] : buildings[1]);
+    }
   }
 
-  byId('skip-resolution').addEventListener('click', () => finish?.());
-  motion.addEventListener('change', () => { if (motion.matches) finish?.(); });
-  form.addEventListener('change', renderPreview);
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (!live || finish) return;
-    const committed = commitShift(state, draft());
-    if (!committed) return;
+  function newRun(scenario: Scenario) {
+    stale = false;
+    writeSave(createSave(scenario), true);
+    state = startMission(scenario);
+    last = undefined;
+    radio.reset();
+    setDraft(defaultPlan);
+    present({ type: 'reset', state, phase: 'clear' });
+    showCurrent();
+  }
 
+  byId('mission-objective').textContent = `Keep all ${rules.crewSize} astronauts safe for ${rules.days} days. Finish with at least ${rules.readiness.battery} battery and ${rules.readiness.food} food.`;
+  byId('close-facility').addEventListener('click', () => closeFacility(true));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && selected && !(event.target instanceof HTMLSelectElement)) closeFacility(true);
+  });
+  byId('ask-help').addEventListener('click', () => {
+    byId('help-text').textContent = state.completedDays < 2
+      ? 'Try Low lights to grow crops while building up a battery buffer.'
+      : 'On alert days, choose the shelter first. Use Normal air at the peak to save your reserve.';
+  });
+  byId('skip-resolution').addEventListener('click', () => finish?.());
+  motion.changes.addEventListener('change', () => { if (motion.reduced) finish?.(); });
+  form.addEventListener('input', renderPreview);
+  form.addEventListener('change', renderPreview);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!live || stale || finish || !save.reviewed) return;
+    const day = state.completedDays + 1;
+    if (submit.dataset.turn !== `${save.runId}/${day}`) return;
+    const plan = draft();
+    const result = commitDay(state, plan, day);
+    if (!result) return;
     const previous = state;
-    const { next, result } = committed;
-    state = next;
+    if (!writeSave({ ...save, plans: [...save.plans, plan], reviewed: false })) {
+      renderPreview();
+      return;
+    }
+
+    last = result;
+    state = result.next;
+    radio.reset();
     closeFacility();
     form.hidden = true;
     navigation.enable(false);
-    if (state.outcome !== 'active') radio.cancelPending();
-    renderState(false);
-    byId('shift-title').textContent = `${phaseLabel[state.phase]} · Running shift ${state.completedShifts} of ${shiftCount}`;
-    byId('resolution-phase').textContent = `${phaseLabel[state.phase]} · Simulated particle monitor`;
-    byId('resolution-title').textContent = `Running shift ${state.completedShifts}`;
-    const trace = document.querySelector<SVGSVGElement>('#risk-trace')!;
-    trace.removeAttribute('hidden');
-    trace.dataset.phase = state.phase;
-    byId('resolution-readout').textContent = `Particle risk: ${state.phase === 'peak' ? 'Highest this drill' : 'High and rising'} · ${result.protectedCrew ? 'Storm shelter' : 'Standard room'}`;
-    byId('resolution-caption').textContent = `Battery → Air system: ${result.airPower} · Shelter: ${Number(result.protectedCrew)} · Grow lights: ${result.lightPower}`;
-    present({ type: 'shift', previous, state, result, duration: motion.matches ? 0 : 6000 });
-    playResolution(6000, () => {
-      present({ type: 'settled', state });
-      renderState();
-      renderReport(result, previous);
-      if (state.outcome === 'active') {
-        form.hidden = false;
-        navigation.enable(true);
-        renderPreview();
-        byId('report-title').focus();
-      } else if (state.outcome === 'secured' || state.outcome === 'delayed') playRecovery();
-      else renderDebrief();
-    }, reportLine(result));
+    byId('day-title').textContent = `Day ${day} of ${rules.days} · Resolving`;
+    byId('day-briefing').textContent = '';
+    byId('resolution-phase').textContent = hasParticleRisk(result.phase) ? 'Simulated particle monitor' : 'Outpost systems';
+    byId('resolution-title').textContent = `Running day ${day}`;
+    byId('risk-trace').toggleAttribute('hidden', !hasParticleRisk(result.phase));
+    byId('risk-trace').dataset.phase = result.phase;
+    byId('resolution-readout').textContent = `Solar generation ${result.generation} · Crew in the ${plan.location}`;
+    byId('resolution-caption').textContent = result.harvest ? 'The greenhouse adds the ripe crop to food stores.' : 'Systems are applying your choices.';
+    const duration = motion.reduced ? 0 : 2600;
+    present({ type: 'day', previous, result, duration });
+    const complete = () => {
+      clearTimeout(timer);
+      finish = undefined;
+      resolution.hidden = true;
+      present({ type: 'settled', state, phase: result.phase });
+      showCurrent();
+    };
+    if (duration) {
+      finish = complete;
+      resolution.hidden = false;
+      byId('resolution-title').focus();
+      timer = window.setTimeout(complete, duration);
+    } else complete();
   });
 
-  function reset(nextScenario: Scenario = state.scenario) {
-    stopResolution();
-    state = startMission(nextScenario);
-    radio.reset();
-    present({ type: 'reset', state });
-    report.hidden = true;
-    debrief.hidden = true;
-    form.hidden = false;
-    navigation.enable(live);
-    location.value = defaultPlan.location;
-    airMode.value = defaultPlan.airMode;
-    lights.value = defaultPlan.lights;
-    helpCount = 0;
-    byId('help-text').textContent = '';
-    byId('ask-help').textContent = 'Ask for a hint';
-    byId<HTMLButtonElement>('ask-help').disabled = false;
-    renderState();
-    renderPreview();
-    if (live) openBuilding(buildings[1]);
+  function preparePlanning() {
+    const next = { ...state.lastPlan };
+    if (!hasParticleRisk(stormPhase(state.completedDays + 1))) next.location = 'habitat';
+    setDraft(next);
+    if (stormPhase(state.completedDays + 1) === 'warning') present({ type: 'warning' });
   }
 
-  byId('harvest-target').textContent = String(harvestTarget);
-  byId('restart-resolution').addEventListener('click', () => reset());
-  byId('retry').addEventListener('click', () => reset(scenario.value as Scenario));
-  reset();
+  proceed.addEventListener('click', () => {
+    if (save.reviewed || finish || stale) return;
+    if (!writeSave({ ...save, reviewed: true })) {
+      proceed.disabled = true;
+      return;
+    }
+    if (state.outcome === 'active') preparePlanning();
+    showCurrent();
+  });
+
+  byId('retry').addEventListener('click', () => {
+    const scenario = byId<HTMLSelectElement>('scenario').value;
+    byId('help-text').textContent = '';
+    newRun(scenario === 'lowPower' ? 'lowPower' : 'standard');
+  });
+  window.addEventListener('storage', event => {
+    if (event.key !== saveKey && event.key !== null) return;
+    if (event.newValue === stored) return;
+    stale = true;
+    saveStatus.textContent = 'This mission changed in another tab. Reload to continue from the saved turn.';
+    proceed.disabled = true;
+    renderPreview();
+  });
 
   return {
     openBuilding,
-    enter() {
+    recoveryNotice: stored && !restored ? 'The previous save could not be read. Start a fresh mission.' : '',
+    canResume: Boolean(restored),
+    enter(resume: boolean) {
       live = true;
-      navigation.enable(true);
-      renderPreview();
-      openBuilding(buildings[1]);
+      if (resume && restored) {
+        setDraft(state.lastPlan);
+        present({ type: 'settled', state, phase: restored.last?.phase ?? 'clear' });
+        if (save.reviewed && state.outcome === 'active') preparePlanning();
+        showCurrent();
+      } else newRun('standard');
     },
   };
 }

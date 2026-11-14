@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17171e" />
-    <title>Lunar Outpost · Solar Storm Warning</title>
+    <title>Lunar Outpost · Survival Training</title>
   </head>
   <body>
     <main class="outpost">
@@ -16,24 +16,26 @@
         <header class="flight-hud">
           <div class="mission-status">
             <p class="eyebrow"><span class="status-light"></span> Lunar outpost</p>
-            <h1>Solar Storm Warning</h1>
-            <p id="shift-title"></p>
+            <h1>Survival Training</h1>
+            <p id="day-title"></p>
+            <p id="resource-alert" role="status"></p>
           </div>
           <section class="telemetry" aria-label="Outpost resources">
             <div data-resource="battery"><label for="battery">Battery</label><span id="battery-value"></span><div class="bar"><meter id="battery" max="11"></meter><span id="battery-fill" aria-hidden="true"></span></div></div>
-            <div data-resource="air"><label for="air">Air reserve</label><span id="air-value"></span><div class="bar"><meter id="air" max="3"></meter><span id="air-fill" aria-hidden="true"></span></div></div>
-            <div data-resource="harvest"><label for="harvest">Tomorrow’s harvest</label><span id="harvest-value"></span><div class="bar"><meter id="harvest" max="4"></meter><span id="harvest-fill" aria-hidden="true"></span></div></div>
+            <div data-resource="air"><label for="air">Reserve air</label><span id="air-value"></span><div class="bar"><meter id="air" max="3"></meter><span id="air-fill" aria-hidden="true"></span></div></div>
+            <div data-resource="food"><label for="food">Food</label><span id="food-value"></span><div class="bar"><meter id="food" max="12"></meter><span id="food-fill" aria-hidden="true"></span></div></div>
           </section>
           <div class="hud-tools">
             <button id="mute" class="radio-action" type="button" aria-pressed="true">Mute</button>
             <details class="sound-settings">
-              <summary>Sound settings</summary>
+              <summary>Settings</summary>
               <div class="console sound-sliders">
                 <label for="music-volume">Music volume</label>
                 <input id="music-volume" type="range" min="0" max="100" value="30" />
                 <label for="effects-volume">Effects volume</label>
                 <input id="effects-volume" type="range" min="0" max="100" value="35" />
                 <p id="sound-status" role="status"></p>
+                <button id="reduce-motion" class="radio-action" type="button" aria-pressed="false">Reduce motion</button>
               </div>
             </details>
             <button id="fullscreen" class="icon-button fullscreen" type="button" aria-label="Fullscreen" title="Enter fullscreen" aria-pressed="false" hidden>⛶</button>
@@ -44,20 +46,23 @@
           <section class="signals" aria-label="Mission updates">
             <div class="signal-card console">
               <p class="eyebrow">Mission objectives</p>
-              <p>Shelter the crew with air through both shifts. Prepare <strong id="harvest-target"></strong> harvest points for tomorrow’s fresh food.</p>
+              <p id="mission-objective"></p>
+              <p id="day-briefing"></p>
+              <p id="save-status" role="status"></p>
               <p id="forecast-notice" role="status"></p>
             </div>
-            <section id="shift-report" class="report console" aria-labelledby="report-title" hidden>
+            <section id="day-report" class="report console" aria-labelledby="report-title" hidden>
               <h2 id="report-title" tabindex="-1"></h2>
               <p id="report-line"></p>
               <details id="report-details">
                 <summary>Resource breakdown</summary>
                 <ul id="report-items"></ul>
               </details>
+              <button id="continue-day" class="action" type="button">Continue</button>
             </section>
           </section>
 
-          <form id="shift-form" class="shift-form">
+          <form id="day-form" class="day-form">
             <section class="workbench console" aria-label="Mission controls">
               <nav id="facility-tabs" class="facility-tabs" aria-label="Outpost facilities"></nav>
               <section id="facility" class="facility" aria-labelledby="building-name" hidden>
@@ -65,7 +70,7 @@
                 <h2 id="building-name" tabindex="-1"></h2>
                 <p id="building-description"></p>
                 <div id="control-panel" class="facility-panel" hidden>
-                  <section class="situation" aria-label="Simulated storm telemetry">
+                  <section class="situation" aria-label="Simulated outpost telemetry">
                     <h3 id="tower-phase"></h3>
                     <p id="tower-crew"></p>
                     <p id="tower-power"></p>
@@ -75,34 +80,38 @@
                   <label for="location">Crew location</label>
                   <select id="location" name="location">
                     <option value="shelter">Storm shelter (+1 power)</option>
-                    <option value="standard">Standard room (+0 power)</option>
+                    <option value="habitat">Habitat (+0 power)</option>
                   </select>
-                  <p>The storm shelter uses extra power to circulate air.</p>
-                  <label for="air-mode">Air system</label>
+                  <p>Shelter walls block some particles. The ventilation fan uses power.</p>
+                  <label for="air-mode">Air supply</label>
                   <select id="air-mode" name="airMode">
-                    <option value="normal">Normal (2 power)</option>
-                    <option value="reserve">Use reserve (1 power, uses 2 air)</option>
+                    <option value="normal">Normal supply</option>
+                    <option value="reserve">Use reserve</option>
                   </select>
                   <p id="phase-demand"></p>
+                  <p id="tower-water" hidden></p>
                   <button id="ask-help" class="radio-action" type="button">Ask for a hint</button>
                   <p id="help-text" role="status"></p>
                 </div>
                 <div id="farm-panel" class="facility-panel" hidden>
-                  <h3>Tomorrow’s harvest</h3>
+                  <h3>Next harvest</h3>
                   <p id="crop-outlook"></p>
                   <label for="lights">Grow lights</label>
-                  <select id="lights" name="lights">
-                    <option value="off">Off (0 power, +0 harvest)</option>
-                    <option value="dim">Dim (1 power, +1 harvest)</option>
-                    <option value="full">Full (3 power, +2 harvest)</option>
-                  </select>
+                  <input id="lights" type="range" min="0" max="2" step="1" value="1" aria-describedby="light-output" />
+                  <div class="light-steps" aria-hidden="true"><span>Off</span><span>Low</span><span>Full</span></div>
+                  <p id="light-output"></p>
+                  <section id="water-panel" class="water-panel" aria-labelledby="water-heading" hidden>
+                    <h3 id="water-heading">Water recovery</h3>
+                    <p id="water-outlook"></p>
+                    <label class="switch"><input id="water-recovery" type="checkbox" checked /> Run recycler (+1 power)</label>
+                  </section>
                 </div>
                 <div id="comms-panel" class="facility-panel" hidden>
                   <h3>Forecast from Earth</h3>
-                  <p>In this drill, Mission Control models the next phase from simulated particle readings. The reply includes how long the peak lasts and what the air system needs.</p>
+                  <p>Mission Control can confirm the particle alert and tell you when to use the shelter.</p>
                   <div class="radio-forecast">
                     <button id="request-forecast" class="radio-action" type="button">Request forecast</button>
-                    <p>About 1.3 seconds each way by radio, plus time for Mission Control to check the forecast.</p>
+                    <p>A reply arrives during planning in about four seconds.</p>
                     <p id="forecast-status" role="status"></p>
                   </div>
                   <details class="radio-archive">
@@ -113,25 +122,24 @@
                   </details>
                 </div>
               </section>
-              <section class="command" aria-label="Shift plan">
-                <div class="shift-preview" aria-live="polite" aria-atomic="true">
+              <section class="command" aria-label="Daily plan">
+                <div class="day-preview" aria-live="polite" aria-atomic="true">
                   <p id="plan-summary"></p>
                   <p id="plan-preview"></p>
                   <p id="plan-warning" class="warning" hidden></p>
                 </div>
-                <button id="commit-shift" class="action" type="submit"></button>
+                <button id="end-day" class="action" type="submit" aria-describedby="plan-preview plan-warning">End Day</button>
               </section>
             </section>
           </form>
           <section id="resolution" class="console resolution" aria-labelledby="resolution-title" hidden>
             <p id="resolution-phase" class="eyebrow"></p>
             <h2 id="resolution-title" tabindex="-1"></h2>
-            <svg id="risk-trace" viewBox="0 0 240 30" aria-hidden="true"><path d="M1 25h25l12-4 12 4h22l10-7 8 2 15-8 12 4 8-7 13 2 16-7 11 5 10-4 10 4 15-5h39" pathLength="1"/></svg>
+            <svg id="risk-trace" hidden viewBox="0 0 240 30" aria-hidden="true"><path d="M1 25h25l12-4 12 4h22l10-7 8 2 15-8 12 4 8-7 13 2 16-7 11 5 10-4 10 4 15-5h39" pathLength="1"/></svg>
             <p id="resolution-readout"></p>
             <p id="resolution-caption" role="status"></p>
             <div class="resolution-actions">
               <button id="skip-resolution" class="radio-action" type="button">Skip animation</button>
-              <button id="restart-resolution" class="radio-action" type="button">Restart drill</button>
             </div>
           </section>
         </div>
@@ -143,13 +151,14 @@
           <p id="outcome-resources"></p>
           <details class="debrief-science">
             <summary>The science behind the drill</summary>
-            <p>Thicker walls can reduce exposure to solar particles. Space-grown crops can supplement stored food. The shift lengths, resource units, and harvest points here are fictional.</p>
+            <p>Shielding can reduce exposure to energetic particles. Space-grown crops can add fresh food to stored meals. This training run uses fictional resource units, sunlight levels, and crop timing.</p>
+            <a href="https://www.nasa.gov/reference/environmental-control-and-life-support-systems-eclss/" target="_blank" rel="noopener">NASA: Air and water systems</a>
             <a href="https://www.nasa.gov/exploration-research-and-technology/growing-plants-in-space/" target="_blank" rel="noopener">NASA: Growing Plants in Space</a>
           </details>
           <label for="scenario">Next scenario</label>
           <select id="scenario">
-            <option value="standard">First storm</option>
-            <option value="lowPower">Low battery challenge (10 power)</option>
+            <option value="standard">Standard training</option>
+            <option value="lowPower">Low battery challenge (7 power)</option>
           </select>
           <button id="retry" class="action" type="button">Retry mission</button>
         </section>
@@ -161,10 +170,12 @@
         <p class="eyebrow">Junior Astronaut Mission Trainer</p>
         <h2 id="intro-title">Lunar outpost</h2>
         <div class="intro-dialogue console">
-          <p id="intro-line" role="status">Ready for touchdown? Guide the crew through a solar storm.</p>
+          <p id="intro-line" role="status">Ready for touchdown? Keep five astronauts safe for seven days.</p>
           <div id="intro-actions" class="intro-actions">
             <button id="start-sound" class="action" type="button">Start with sound</button>
             <button id="start-muted" class="radio-action" type="button">Play muted</button>
+            <button id="resume-mission" class="action" type="button" hidden>Resume mission</button>
+            <button id="new-mission" class="radio-action" type="button" hidden>Start new mission</button>
           </div>
         </div>
       </div>

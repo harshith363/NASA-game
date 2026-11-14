@@ -1,10 +1,10 @@
 # Junior Astronaut Mission Trainer
 
-A browser game for the NASA Space Apps Challenge. Land at a lunar outpost, shelter the crew through two storm shifts, and prepare three harvest points for tomorrow’s fresh-food supplement. The Control Tower shows current simulated telemetry; Communications can retrieve a forecast from Mission Control; the farm shows what each grow light setting adds. The crew and greenhouse share a battery. The peak costs more, and using reserve air at the peak can empty the tank.
+Land at a lunar outpost and keep five astronauts safe for seven days. Read the daily forecast, plan power and life support, and preview tomorrow’s supplies before choosing **End Day**. Shelter during the particle alert and grow a crop in time to supplement the crew’s stored food. Finish with at least four battery and two food to complete the readiness objective.
 
-Shift choices are previews until committed. The game supports keyboard controls, reduced motion, a static fallback for WebGL, and captioned play with or without sound. Retry the first storm or choose the low battery challenge in the debrief. Resource values and consequences are simplified for the drill.
+The Farm controls grow lights and introduces water recovery on day two. The Control Tower shows generation and demand separately, along with air and shelter choices. The Communications Centre can provide a forecast and includes the archived NASA observation that inspired the alert. Resource units, daily sunlight, and crop timing are training parameters.
 
-**Phase 1 status:** complete. The playable prototype includes the later arrival, forecast, audio, and replay improvements. Facilitated player sessions and physical-device checks remain pending. See the [validation record](docs/PROTOTYPE_VALIDATION.md).
+The browser saves each committed turn. **Resume mission** restores the current briefing, unread report, or debrief. **Start new mission** replaces the existing run. The debrief offers standard and low-battery training. Settings include audio and reduced motion. The game supports keyboard controls and a static map when WebGL is unavailable.
 
 ## Run locally
 
@@ -15,14 +15,14 @@ npm ci
 npm run dev
 ```
 
-Open the URL printed by Vite. Run `npm test` to check the mission rules, `npm run build` to type-check and build the static site into `dist/`, and `npm run preview` to serve that build locally.
+Open the URL printed by Vite. Run `npm test` for rule and save checks, `npm run build` for type checking and the production bundle, and `npm run preview` to serve that bundle locally.
 
 ## Project layout
 
-- `src/scenes/`: Three.js lunar base, arrival, shift and harvest sequences, and static map.
-- `src/mission/`: scenario rules, draft projections, outcomes, and committed presentation events.
-- `src/ui/`: accessible facility controls, radio, shift reports, and debrief.
-- `src/audio/` and `public/audio/`: adaptive score, sound cues, and saved preferences. See the [asset register](docs/ASSET_REGISTER.md).
-- `src/data/`: facility metadata and the bundled NASA DONKI event record.
+- `src/mission/` holds daily rules, save validation, and the event contract for visuals and audio.
+- `src/ui/` holds the HUD, facility controls, forecasts, radio, reports, and preferences.
+- `src/scenes/` holds the Three.js outpost, arrival, turn animations, and static map.
+- `src/audio/` and `public/audio/` hold the adaptive score and cues. See the [asset register](docs/ASSET_REGISTER.md).
+- `src/data/` holds facility metadata and the bundled NASA DONKI record.
 
-See the [prototype improvement plan](PROTOTYPE_IMPROVEMENT_PLAN.md) for the design and first-time player usability targets.
+See the [survival plan](SURVIVAL_GAME_PHASED_PLAN.md) for the implementation handoff and [Lunar milestone verification](docs/LUNAR_SURVIVAL_VALIDATION.md) for rules, scenarios, and checks.

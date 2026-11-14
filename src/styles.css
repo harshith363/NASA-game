@@ -93,7 +93,7 @@ button { cursor: pointer; }
 #sound-status:not(:empty) { font-size: .81rem; margin-top: 8px; }
 .mission-status { text-shadow: 0 2px 9px #090910, 0 0 16px #090910; }
 .mission-status h1 { font-size: clamp(1.25rem, 2.5vw, 2.05rem); letter-spacing: -.045em; }
-#shift-title { color: #e5ded0; font-size: .83rem; }
+#day-title { color: #e5ded0; font-size: .83rem; }
 .eyebrow {
   color: var(--signal);
   font: 650 .69rem/1.4 "IBM Plex Mono", ui-monospace, monospace;
@@ -133,7 +133,7 @@ button { cursor: pointer; }
   --resource: #efb67e;
 }
 .telemetry > [data-resource="air"] { --resource: #90d9ec; }
-.telemetry > [data-resource="harvest"] { --resource: #a7dfa2; }
+.telemetry > [data-resource="food"] { --resource: #a7dfa2; }
 .telemetry label { font-weight: 650; }
 .telemetry [id$="-value"] { color: var(--resource); font: .72rem ui-monospace, monospace; white-space: nowrap; }
 .bar {
@@ -173,8 +173,8 @@ button { cursor: pointer; }
   border: 1px solid var(--line);
   color: #f2efe5;
   background: #151720e8;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 4px;
   font-size: 23px;
   line-height: 1;
@@ -210,7 +210,7 @@ button { cursor: pointer; }
   border: 1px solid var(--line);
   color: var(--muted);
   background: #242836;
-  min-height: 42px;
+  min-height: 44px;
   border-radius: 4px;
   font-weight: 650;
   padding: 5px;
@@ -240,7 +240,7 @@ button { cursor: pointer; }
 .facility-panel select {
   display: block;
   width: 100%;
-  min-height: 42px;
+  min-height: 44px;
   padding: 7px;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -254,7 +254,7 @@ button { cursor: pointer; }
   border-top: 1px solid var(--line);
 }
 .radio-action {
-  min-height: 42px;
+  min-height: 44px;
   padding: 5px 12px;
   margin-bottom: 7px;
   color: #caeff9;
@@ -318,7 +318,7 @@ button { cursor: pointer; }
   padding: 18px;
   animation: panel-in .25s ease-out;
 }
-.debrief select { min-height: 42px; max-width: 100%; margin: 4px 7px 6px 0; border-radius: 4px; }
+.debrief select { min-height: 44px; max-width: 100%; margin: 4px 7px 6px 0; border-radius: 4px; }
 .debrief label { display: block; font-weight: 650; }
 .debrief .eyebrow { color: var(--signal); }
 .debrief h2 { font-size: 1.95rem; }
@@ -347,7 +347,7 @@ button { cursor: pointer; }
 }
 @media (max-width: 460px) {
   .flight-hud .fullscreen { display: none; }
-  .flight-hud .radio-action { min-height: 35px; padding-inline: 8px; }
+  .flight-hud .radio-action { padding-inline: 8px; }
   .sound-settings > summary { font-size: .77rem; padding: 4px; }
   .mission-status h1 { font-size: 1.17rem; }
 }
@@ -395,3 +395,21 @@ button { cursor: pointer; }
   right: var(--edge);
   z-index: 1;
 }
+
+#save-status:empty, #resource-alert:empty { display: none; }
+#save-status, #resource-alert { color: #ffcd9b; }
+#resource-alert { font-size: .82rem; }
+#continue-day, #reduce-motion { margin-top: 8px; }
+.facility-tab, .map-marker, .radio-action, .close, .sound-settings > summary { min-height: 44px; }
+.close { width: 44px; }
+.action:active:not(:disabled), .radio-action:active { transform: translateY(1px); }
+.facility h2 { padding-right: 48px; }
+#lights { width: 100%; min-height: 44px; margin: 0; accent-color: #a7dfa2; }
+#lights::-webkit-slider-thumb { transform: scale(1.35); }
+.light-steps { display: flex; justify-content: space-between; }
+#light-output { margin-top: 6px; }
+.water-panel { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
+.facility-panel .switch { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.switch input { width: 20px; height: 20px; accent-color: #a7dfa2; }
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; }
+.reduce-motion #risk-trace path { stroke-dashoffset: 0; }

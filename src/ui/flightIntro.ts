@@ -1,54 +1,68 @@
-import type { PresentMissionEvent } from '../mission/solarStorm';
+import type { MotionPreference } from './motionPreference';
+import type { PresentMissionEvent } from '../mission/presentation';
 
 export function mountFlightIntro(
   ready: Promise<void>,
   present: PresentMissionEvent,
   startAudio: (enabled: boolean) => void,
-  onEnter: () => void,
+  resumeAudio: () => void,
+  onEnter: (resume: boolean) => void,
+  canResume: boolean,
+  recoveryNotice: string,
+  motion: MotionPreference,
 ) {
   const game = document.querySelector<HTMLElement>('#mission-workspace')!;
   const intro = document.querySelector<HTMLElement>('#flight-intro')!;
   const line = document.querySelector<HTMLElement>('#intro-line')!;
   const actions = document.querySelector<HTMLElement>('#intro-actions')!;
   const skip = document.querySelector<HTMLButtonElement>('#intro-skip')!;
-  const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let stage: 'launch' | 'arrival' | 'done' = 'launch';
-  let alertTimer = 0;
   let endTimer = 0;
 
-  function enter() {
+  function enter(resume = false) {
     if (stage === 'done') return;
     stage = 'done';
-    clearTimeout(alertTimer);
     clearTimeout(endTimer);
-    present({ type: 'warning' });
     intro.hidden = true;
     game.inert = false;
-    onEnter();
+    onEnter(resume);
   }
 
-  async function start(sound: boolean) {
+  async function start(sound: boolean | undefined) {
     if (stage !== 'launch') return;
     stage = 'arrival';
-    startAudio(sound);
+    if (sound === undefined) resumeAudio();
+    else startAudio(sound);
     intro.dataset.stage = stage;
     actions.hidden = true;
     skip.hidden = false;
     skip.focus();
-    line.textContent = 'Pilot: Welcome to the outpost. The greenhouse is almost ready for its next harvest.';
+    line.textContent = 'Pilot: Welcome to the outpost. Check the solar power and food before you plan the first day.';
     await ready;
     if (stage !== 'arrival') return;
-    if (motion.matches) return enter();
+    if (motion.reduced) return enter();
     present({ type: 'arrival' });
-    alertTimer = window.setTimeout(() => {
-      line.textContent = 'Tower: Particle readings are rising. Check the shelter systems.';
-      present({ type: 'warning' });
-    }, 6600);
-    endTimer = window.setTimeout(enter, 9600);
+    endTimer = window.setTimeout(enter, 6200);
   }
 
+  if (recoveryNotice) line.textContent = recoveryNotice;
+  if (canResume) {
+    const resume = document.querySelector<HTMLButtonElement>('#resume-mission')!;
+    const restart = document.querySelector<HTMLButtonElement>('#new-mission')!;
+    line.textContent = 'A saved Lunar mission is ready. Starting a new mission replaces it.';
+    document.querySelector<HTMLButtonElement>('#start-sound')!.hidden = true;
+    document.querySelector<HTMLButtonElement>('#start-muted')!.hidden = true;
+    resume.hidden = false;
+    restart.hidden = false;
+    resume.addEventListener('click', () => {
+      if (stage !== 'launch') return;
+      resumeAudio();
+      enter(true);
+    });
+    restart.addEventListener('click', () => void start(undefined));
+  }
   document.querySelector('#start-sound')!.addEventListener('click', () => void start(true));
   document.querySelector('#start-muted')!.addEventListener('click', () => void start(false));
   skip.addEventListener('click', () => { if (stage === 'arrival') enter(); });
-  motion.addEventListener('change', () => { if (stage === 'arrival' && motion.matches) enter(); });
+  motion.changes.addEventListener('change', () => { if (stage === 'arrival' && motion.reduced) enter(); });
 }

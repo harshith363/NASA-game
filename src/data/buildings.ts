@@ -2,13 +2,13 @@ export const buildings = [
   {
     id: 'farm',
     name: 'Farm',
-    description: 'The greenhouse crops are already growing. Light during the storm helps them finish in time for tomorrow.',
+    description: 'Light and water help crops mature. A harvest adds fresh food to your stored meals.',
     color: 0xa3dc94,
   },
   {
     id: 'control',
     name: 'Control Tower',
-    description: 'Fast-moving particles from the Sun can harm astronauts. Thick shelter walls help protect the crew.',
+    description: 'Check power, air, and the particle forecast before you choose where the crew will work.',
     color: 0xffbc71,
   },
   {

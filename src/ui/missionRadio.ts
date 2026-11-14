@@ -1,16 +1,16 @@
 import { archivedSolarEvent } from '../data/archivedSolarEvent';
-import { shiftDemand, type MissionState } from '../mission/solarStorm';
+import { lunarTraining, type Outcome } from '../mission/dailyMission';
 
 export function mountMissionRadio(onForecast: () => void) {
   const request = document.querySelector<HTMLButtonElement>('#request-forecast')!;
   const status = document.querySelector<HTMLElement>('#forecast-status')!;
   const observedAt = document.querySelector<HTMLTimeElement>('#solar-observed-at')!;
   const notice = document.querySelector<HTMLElement>('#forecast-notice')!;
-  const wave = document.querySelector<HTMLElement>('#forecast-detail')!;
   let timer = 0;
-  let deliveredAt: number | undefined;
-  let state: MissionState;
-  let text = '';
+  let day = 1;
+  let active = false;
+  let received = false;
+  const storm = lunarTraining.stormStart;
 
   document.querySelector('#solar-observer')!.textContent = archivedSolarEvent.observer;
   observedAt.dateTime = archivedSolarEvent.observedAtUtc;
@@ -19,47 +19,37 @@ export function mountMissionRadio(onForecast: () => void) {
   }).format(new Date(archivedSolarEvent.observedAtUtc));
   document.querySelector<HTMLAnchorElement>('#solar-source')!.href = archivedSolarEvent.sourceUrl;
 
-  function render(current: MissionState) {
-    state = current;
-    if (deliveredAt === undefined) {
-      wave.textContent = 'Forecast: no reply yet.';
-      return;
-    }
-    const age = Math.max(0, current.completedShifts - deliveredAt);
-    wave.textContent = `Forecast: ${age ? `${age} ${age === 1 ? 'shift' : 'shifts'} ago` : 'received this round'}. ${text}`;
+  function render(currentDay: number, outcome: Outcome) {
+    day = currentDay;
+    active = outcome === 'active';
+    request.setAttribute('aria-disabled', String(Boolean(timer) || received || !active));
   }
 
   request.addEventListener('click', () => {
-    if (request.getAttribute('aria-disabled') === 'true' || state.outcome !== 'active') return;
+    if (timer || received || !active) return;
     request.setAttribute('aria-disabled', 'true');
     status.textContent = 'Signal sent. Waiting for Mission Control…';
     timer = window.setTimeout(() => {
       timer = 0;
-      deliveredAt = state.completedShifts;
-      const demand = shiftDemand(state, 1);
-      text = `Peak lasts one shift. The air system needs ${demand.addedPower} extra power; reserve mode draws ${demand.addedAir} extra air too. Expect recovery after the peak.`;
+      received = true;
+      const text = day > storm + 1
+        ? 'The particle alert has passed. Habitat operations can resume.'
+        : `Use the shelter on days ${storm} and ${storm + 1}. On day ${storm + 1}, the air system needs one extra power. Reserve mode also needs one extra air.`;
       status.textContent = text;
-      notice.textContent = `Forecast received · ${text}`;
-      render(state);
+      notice.textContent = text;
       onForecast();
     }, 4000);
   });
 
-  function cancelPending() {
-    clearTimeout(timer);
-    timer = 0;
-    if (deliveredAt === undefined && status.textContent) status.textContent = 'Request ended with the drill.';
-  }
-
   return {
-    render, cancelPending,
+    render,
     reset() {
-      cancelPending();
-      deliveredAt = undefined;
-      text = '';
-      request.removeAttribute('aria-disabled');
+      clearTimeout(timer);
+      timer = 0;
+      received = false;
       status.textContent = '';
       notice.textContent = '';
+      render(day, active ? 'active' : 'ready');
     },
   };
 }

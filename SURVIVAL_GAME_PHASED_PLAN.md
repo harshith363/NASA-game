@@ -506,8 +506,9 @@ Choose among models actually available in the implementation chat. Record the se
 
 ### Phase handoff record
 
-- Completed phase — planning only.
-- New deliverable — this implementation plan.
-- Next implementation step — Phase 0 baseline, followed by Phase 1 Lunar daily survival.
-- Decisions to tune through playtesting — mission length, resource values, event pacing, control density, and task costs.
-- Implementation verification — pending at the start of the new chat.
+- Completed phases — Phase 0 baseline and Phase 1 basic Lunar daily survival.
+- Playable milestone — seven-day Lunar run with forecasts, End Day, delayed harvest, water recovery, daily reports, readiness results, and persistent retry/resume.
+- Changed areas — daily rules and save journal in `src/mission/`, the HUD and facility controls in `index.html` and `src/ui/`, and committed presentation in the existing outpost scene and soundtrack.
+- Checks — 11 rule tests, production build, complete desktop run, and narrow-screen fallback checks. [Rules, baseline and verification](docs/LUNAR_SURVIVAL_VALIDATION.md).
+- Tuning still pending — first-time player pacing and resource balance, physical-device performance, and listening checks.
+- Next phase — five specialists, individual assignments and readiness, structured dialogue, and the animated storm briefing.

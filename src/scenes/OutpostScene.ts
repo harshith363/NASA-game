@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { buildings, type Building } from '../data/buildings';
-import { harvestTarget, type MissionEvent, type MissionState, type Phase } from '../mission/solarStorm';
+import { hasParticleRisk, type MissionState, type StormPhase } from '../mission/dailyMission';
+import type { MissionEvent } from '../mission/presentation';
+import type { MotionPreference } from '../ui/motionPreference';
 import { makeFacility } from './facilities';
 import { createAstronaut, createLander } from './flightModels';
 import { buildTerrain, lunarHeight } from './lunarTerrain';
@@ -10,13 +12,14 @@ type Point = [number, number];
 const habitat: Point = [4.1, -3.4];
 const shelterDoor: Point = [0, -2.65];
 const farmDoor: Point = [-5.65, 2.4];
-const beaconColors = { warning: 0xfcb96e, rising: 0xff8d59, peak: 0xff6964, recovery: 0x94e6a4 };
+const beaconColors = { clear: 0x90d8f0, warning: 0xfcb96e, rising: 0xff8d59, peak: 0xff6964, recovery: 0x94e6a4 };
 type BuildingId = Building['id'];
 
 export function mountOutpost(
   container: HTMLElement,
   markers: Record<BuildingId, HTMLButtonElement>,
   activate: (building: Building) => void,
+  motion: MotionPreference,
 ) {
   const canvas = document.createElement('canvas');
   let renderer: THREE.WebGLRenderer;
@@ -160,17 +163,15 @@ export function mountOutpost(
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const targets = models.map((model) => model.group);
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let selected: BuildingId | undefined;
   let hovered: BuildingId | undefined;
   let growLevel = .46;
-  let phase: Phase = 'warning';
-  let alert = false;
+  let phase: StormPhase = 'clear';
   let committed: MissionState | undefined;
-  let action: Extract<MissionEvent, { type: 'shift' | 'recovery' }> | undefined;
+  let action: Extract<MissionEvent, { type: 'day' }> | undefined;
   let actionStart = 0;
-  const growth = { off: 0, dim: .46, full: 1.65 };
-  const crewDoor = (state: MissionState): Point => state.crew === 'shelter' ? shelterDoor : habitat;
+  const growth = { off: 0, low: .46, full: 1.65 };
+  const crewDoor = (state: MissionState): Point => state.lastPlan.location === 'shelter' ? shelterDoor : habitat;
   let width = 1;
   let height = 1;
   let frame = 0;
@@ -225,9 +226,18 @@ export function mountOutpost(
   function renderAction(now: number) {
     if (!action) return;
     const progress = THREE.MathUtils.clamp((now - actionStart) / Math.max(1, action.duration), 0, 1);
-    if (action.type === 'shift') {
-      const from = crewDoor(action.previous);
-      const to = crewDoor(action.state);
+    const from = crewDoor(action.previous);
+    const to = crewDoor(action.result.next);
+    if (action.result.harvest && !hasParticleRisk(action.result.phase)) {
+      if (progress < .47) walkCrew([from, farmDoor], progress / .47);
+      else {
+        walkCrew([farmDoor, [0, 2.3], to], (progress - .5) / .49);
+        crate.visible = crew[0].figure.visible;
+        crate.position.copy(crew[0].figure.position);
+        crate.position.y += .54;
+        crate.position.x += .14;
+      }
+    } else {
       if (from !== to) walkCrew([from, to], progress / .65);
       const outputs = [action.result.airPower, action.result.lightPower];
       for (const [index, { target, nodes }] of flows.entries()) {
@@ -240,48 +250,36 @@ export function mountOutpost(
           node.position.set(x, lunarHeight(x, z) + .28, z);
         }
       }
-      if (progress > .3) growLevel = growth[action.state.lights];
-    } else {
-      if (!action.state.harvest) walkCrew([shelterDoor, habitat], progress);
-      else if (progress < .47) walkCrew([shelterDoor, farmDoor], progress / .47);
-      else {
-        walkCrew([farmDoor, [0, 2.3], habitat], (progress - .5) / .49);
-        crate.visible = action.state.harvest > 0 && crew[0].figure.visible;
-        crate.scale.setScalar(action.state.harvest >= harvestTarget ? 1 : .7);
-        crate.position.copy(crew[0].figure.position);
-        crate.position.y += .54;
-        crate.position.x += .14;
-      }
     }
+    if (progress > .3) growLevel = growth[action.result.next.lastPlan.lights];
   }
 
   function present(event: MissionEvent) {
     fallback?.present(event);
     switch (event.type) {
       case 'arrival':
-        if (!fallback && !reducedMotion.matches) arrivalStart = performance.now();
+        if (!fallback && !motion.reduced) arrivalStart = performance.now();
         break;
       case 'warning':
         clearAction();
-        alert = true;
+        phase = 'warning';
         break;
-      case 'shift':
-      case 'recovery':
+      case 'day':
         clearAction();
-        committed = event.state;
-        phase = event.state.phase;
+        committed = event.result.next;
+        phase = event.result.phase;
         if (event.duration && !fallback) {
           action = event;
           actionStart = performance.now();
-        } else growLevel = growth[event.state.lights];
+        } else growLevel = growth[committed.lastPlan.lights];
         break;
       case 'settled':
       case 'reset':
       case 'debrief':
         clearAction();
         committed = event.state;
-        phase = event.state.phase;
-        growLevel = growth[event.state.lights];
+        phase = event.phase;
+        growLevel = growth[committed.lastPlan.lights];
         break;
     }
   }
@@ -321,7 +319,7 @@ export function mountOutpost(
   const start = performance.now();
 
   function render(now: number) {
-    const moving = !reducedMotion.matches;
+    const moving = !motion.reduced;
     const time = moving ? (now - start) / 1000 : 0;
     const compact = width < 760;
     const distance = Math.max(.92, (compact ? 1.09 : .94) / camera.aspect);
@@ -345,10 +343,10 @@ export function mountOutpost(
     for (const { building, group, ring, beacon, grow, dishPivot, markerHeight } of models) {
       ring.visible = selected === building.id || hovered === building.id;
       if (building.id === 'control') {
-        beacon.color.set(alert ? beaconColors[phase] : 0x90d8f0);
+        beacon.color.set(beaconColors[phase]);
         beacon.emissive.copy(beacon.color);
-        beacon.emissiveIntensity = !alert ? .55 : 1.23 + .37 * Math.sin(time * (phase === 'peak' ? 4 : 2.4));
-        if (committed?.crew === 'shelter') ring.visible = true;
+        beacon.emissiveIntensity = phase === 'clear' ? .55 : 1.23 + .37 * Math.sin(time * (phase === 'peak' ? 4 : 2.4));
+        if (committed?.lastPlan.location === 'shelter') ring.visible = true;
       } else beacon.emissiveIntensity = .54 + .19 * Math.sin(time * 2.1);
       grow.emissiveIntensity += (growLevel - grow.emissiveIntensity) * (moving ? .11 : 1);
       dishPivot.rotation.y = Math.sin(time * .37) * .74 + .35;
@@ -371,8 +369,7 @@ export function mountOutpost(
     canvas.remove();
     fallback = mountStaticMap(container, markers);
     fallback.select(selected);
-    if (committed) fallback.present({ type: 'settled', state: committed });
-    if (alert) fallback.present({ type: 'warning' });
+    if (committed) fallback.present({ type: 'settled', state: committed, phase });
     resolveReady();
   }, { once: true });
 
@@ -401,8 +398,7 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
     markers[building.id].style.top = `${(y - 39) / 6}%`;
   }
   let selected: BuildingId | undefined;
-  let phase: Phase = 'warning';
-  let alert = false;
+  let phase: StormPhase = 'clear';
   let state: MissionState | undefined;
   function paint() {
     if (!context) return;
@@ -431,8 +427,8 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
       const [x, y] = sites[building.id];
       context.fillStyle = '#292c31';
       context.fillRect(x - 49, y - 13, 98, 49);
-      const color = building.id === 'control' && alert ? beaconColors[phase]
-        : building.id === 'farm' && state?.lights === 'off' ? 0x6e7959 : building.color;
+      const color = building.id === 'control' && phase !== 'clear' ? beaconColors[phase]
+        : building.id === 'farm' && state?.lastPlan.lights === 'off' ? 0x6e7959 : building.color;
       context.fillStyle = `#${color.toString(16)}`;
       context.fillRect(x - 41, y - 7, 82, 25);
       if (building.id === selected) {
@@ -447,8 +443,9 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
     ready: Promise.resolve(),
     select(id?: BuildingId) { selected = id; paint(); },
     present(event: MissionEvent) {
-      if ('state' in event) { state = event.state; phase = state.phase; }
-      if (event.type === 'warning') alert = true;
+      if ('state' in event) { state = event.state; phase = event.phase; }
+      if (event.type === 'day') { state = event.result.next; phase = event.result.phase; }
+      if (event.type === 'warning') phase = 'warning';
       paint();
     },
   };

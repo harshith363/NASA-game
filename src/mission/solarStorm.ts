@@ -1,3 +1,4 @@
+// Rules for the original two-shift prototype, retained for baseline regression checks.
 export const shiftCount = 2;
 export const harvestTarget = 3;
 export const resourceLimits = { battery: 11, air: 3, harvest: 4 };
@@ -88,11 +89,3 @@ export function recover(state: MissionState): MissionState {
   return state.outcome === 'secured' || state.outcome === 'delayed'
     ? { ...state, phase: 'recovery', crew: 'habitat' } : state;
 }
-
-export type MissionEvent =
-  | { type: 'arrival' | 'warning' | 'forecast' }
-  | { type: 'shift'; previous: MissionState; state: MissionState; result: ShiftProjection; duration: number }
-  | { type: 'settled' | 'debrief' | 'reset'; state: MissionState }
-  | { type: 'recovery'; state: MissionState; duration: number };
-
-export type PresentMissionEvent = (event: MissionEvent) => void;

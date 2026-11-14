@@ -1,4 +1,5 @@
-import type { MissionEvent } from '../mission/solarStorm';
+import { hasParticleRisk } from '../mission/dailyMission';
+import type { MissionEvent } from '../mission/presentation';
 
 const settingsKey = 'lunar-outpost-audio-v1';
 const layers = ['foundation', 'pulse', 'peak'] as const;
@@ -200,41 +201,26 @@ export function mountMissionAudio() {
         }
         break;
       case 'forecast':
-        once('forecast', 'forecast');
+        cue('forecast');
         break;
-      case 'shift':
-        setMix(event.state.phase === 'peak' ? [.7, .76, .64] : [.72, .64, .17]);
-        if (!event.duration) {
-          if (event.result.protectedCrew && event.state.air > 0) cue('shelter');
-          else cue('allocation');
-        } else {
-          cue('interface');
-          later('allocation', 1600);
-          if (event.result.protectedCrew && event.state.air > 0) later('shelter', 3950);
+      case 'day': {
+        const { phase, next } = event.result;
+        setMix(phase === 'peak' ? [.7, .76, .64] : hasParticleRisk(phase) ? [.72, .64, .17] : [.88, .08, 0]);
+        cue('interface');
+        if (event.duration) {
+          later('allocation', 650);
+          if (hasParticleRisk(phase) && next.outcome !== 'interrupted') later('shelter', 1350);
         }
         break;
+      }
       case 'settled':
-        if (event.state.completedShifts === 1 && event.state.outcome === 'active') {
-          setMix([.64, .29, .26]);
-        }
-        // Discard any cue scheduled for a skipped animation.
         if (timers.size) stopCues();
-        break;
-      case 'recovery':
-        setMix([.88, .08, 0]);
-        if (event.state.outcome === 'secured' && event.duration && settings.enabled && !document.hidden) {
-          const timer = window.setTimeout(() => {
-            timers.delete(timer);
-            once('delivery', 'harvest');
-          }, event.duration * .68);
-          timers.add(timer);
-        }
+        setMix(hasParticleRisk(event.phase) ? [.64, .29, .26] : [.88, .08, 0]);
         break;
       case 'debrief':
-        for (const timer of timers) clearTimeout(timer);
-        timers.clear();
-        if (event.state.outcome === 'secured') once('delivery', 'harvest');
-        else if (event.state.outcome === 'delayed') cue('delayed');
+        stopCues();
+        if (event.state.outcome === 'ready') setMix([.88, .08, 0]);
+        else if (event.state.outcome === 'shortfall') cue('delayed');
         else { setMix([.46, 0, 0]); cue('interrupted'); }
         break;
       case 'reset':
@@ -243,7 +229,7 @@ export function mountMissionAudio() {
         seen.clear();
         for (const { source, gain } of loopNodes) { source.stop(); source.disconnect(); gain.disconnect(); }
         loopNodes = [];
-        setMix([.72, .24, 0]);
+        setMix([.88, .08, 0]);
         void startLoop();
         break;
     }
@@ -259,5 +245,5 @@ export function mountMissionAudio() {
   }
   document.addEventListener('visibilitychange', () => void updatePlayback());
   updateLevels();
-  return { start, present };
+  return { start, resume: () => start(settings.enabled), present };
 }
