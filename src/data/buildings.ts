@@ -7,7 +7,7 @@ export const buildings = [
   },
   {
     id: 'control',
-    name: 'Control Tower',
+    name: 'Mission Control Tower',
     description: 'Check power, air, and the particle forecast before you choose where the crew will work.',
     color: 0xffbc71,
   },

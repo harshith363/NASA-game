@@ -35,30 +35,55 @@ export function createLander() {
   return craft;
 }
 
-export function createAstronaut() {
+const torsoGeometry = new THREE.CapsuleGeometry(.17, .21, 4, 8);
+const packGeometry = new THREE.BoxGeometry(.25, .33, .15);
+const helmetGeometry = new THREE.SphereGeometry(.157, 12, 8);
+const glassGeometry = new THREE.SphereGeometry(.121, 12, 8);
+const armGeometry = new THREE.CapsuleGeometry(.046, .16, 3, 7);
+const legGeometry = new THREE.CapsuleGeometry(.061, .2, 3, 7);
+const bootGeometry = new THREE.BoxGeometry(.124, .085, .165);
+const patchGeometry = new THREE.BoxGeometry(.14, .07, .04);
+const toolGeometry = new THREE.BoxGeometry(.07, .19, .09);
+
+export function createAstronaut(color: number) {
+  const accent = new THREE.MeshStandardMaterial({ color, roughness: .56 });
   const figure = new THREE.Group();
-  mesh(figure, new THREE.CapsuleGeometry(.17, .21, 4, 8), suit, 0, .51, 0);
-  mesh(figure, new THREE.BoxGeometry(.25, .33, .15), alloy, 0, .52, -.14);
-  mesh(figure, new THREE.SphereGeometry(.157, 12, 8), suit, 0, .85, 0);
-  const glass = mesh(figure, new THREE.SphereGeometry(.121, 12, 8), visor, 0, .86, .091);
+  mesh(figure, torsoGeometry, suit, 0, .51, 0);
+  mesh(figure, packGeometry, alloy, 0, .52, -.14);
+  mesh(figure, helmetGeometry, suit, 0, .85, 0);
+  const glass = mesh(figure, glassGeometry, visor, 0, .86, .091);
   glass.scale.set(1, .79, .63);
+  mesh(figure, patchGeometry, accent, 0, .57, .16);
   const limbs: { arm: THREE.Group; leg: THREE.Group; side: number }[] = [];
   for (const side of [-1, 1]) {
     const arm = new THREE.Group();
     arm.position.set(side * .181, .61, 0);
     figure.add(arm);
-    mesh(arm, new THREE.CapsuleGeometry(.046, .16, 3, 7), suit, 0, -.115, 0);
+    mesh(arm, armGeometry, suit, 0, -.115, 0);
     const leg = new THREE.Group();
     leg.position.set(side * .082, .34, 0);
     figure.add(leg);
-    mesh(leg, new THREE.CapsuleGeometry(.061, .2, 3, 7), suit, 0, -.139, 0);
-    mesh(leg, new THREE.BoxGeometry(.124, .085, .165), amber, 0, -.275, .025);
+    mesh(leg, legGeometry, suit, 0, -.139, 0);
+    mesh(leg, bootGeometry, accent, 0, -.275, .025);
     limbs.push({ arm, leg, side });
   }
 
+  const hand = limbs[1].arm;
+  const tool = mesh(hand, toolGeometry, accent, 0, -.245, .06);
+  tool.visible = false;
   return {
     figure,
+    work(progress: number, task: 'inspect' | 'repair' | 'grow') {
+      const cycle = progress * Math.PI * 8;
+      tool.visible = true;
+      hand.rotation.x = task === 'repair' ? -.9 + .44 * Math.sin(cycle) : -1.15 + .1 * Math.sin(cycle);
+      hand.rotation.z = task === 'grow' ? .28 + .19 * Math.sin(cycle) : 0;
+      limbs[0].arm.rotation.x = -.28;
+      for (const { leg } of limbs) leg.rotation.x = 0;
+    },
     walk(distance: number, moving: boolean) {
+      tool.visible = false;
+      hand.rotation.z = 0;
       const stride = moving ? Math.sin(distance * 7) * .42 : 0;
       for (const { arm, leg, side } of limbs) {
         arm.rotation.x = stride * side;

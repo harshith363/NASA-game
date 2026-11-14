@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { crew as crewRoster } from '../data/crew';
 import { buildings, type Building } from '../data/buildings';
 import { hasParticleRisk, type MissionState, type StormPhase } from '../mission/dailyMission';
 import type { MissionEvent } from '../mission/presentation';
@@ -106,7 +107,7 @@ export function mountOutpost(
   ramp.castShadow = true;
   lander.add(ramp);
   scene.add(lander);
-  const crew = Array.from({ length: 3 }, () => createAstronaut());
+  const crew = crewRoster.map(member => createAstronaut(member.color));
   for (const { figure } of crew) {
     figure.rotation.y = Math.PI;
     figure.visible = false;
@@ -194,7 +195,7 @@ export function mountOutpost(
     const lengths = route.slice(1).map(([x, z], i) => Math.hypot(x - route[i][0], z - route[i][1]));
     const length = lengths.reduce((sum, value) => sum + value, 0);
     for (const [i, { figure, walk }] of crew.entries()) {
-      const step = (progress - i * .057) / .87;
+      const step = (progress - i * .04) / .83;
       figure.visible = step > 0 && step < 1;
       if (!figure.visible) continue;
       const distance = step * length;
@@ -204,7 +205,7 @@ export function mountOutpost(
       const [ax, az] = route[edge];
       const [bx, bz] = route[edge + 1];
       const t = remaining / Math.max(.01, lengths[edge]);
-      const x = THREE.MathUtils.lerp(ax, bx, t) + (i - 1) * .28;
+      const x = THREE.MathUtils.lerp(ax, bx, t) + (i - 2) * .28;
       const z = THREE.MathUtils.lerp(az, bz, t);
       let y = lunarHeight(x, z);
       if (fromLander && edge === 0) y = Math.max(y, landingHeight + 1.4 - distance * .59);
@@ -249,6 +250,21 @@ export function mountOutpost(
           const z = THREE.MathUtils.lerp(supply[1], destination[1], t);
           node.position.set(x, lunarHeight(x, z) + .28, z);
         }
+      }
+    }
+    if (!hasParticleRisk(action.result.phase) && to === habitat) {
+      for (const [index, member] of crewRoster.entries()) {
+        const task = action.result.next.lastPlan.assignments[member.id];
+        if (task !== 'inspect' && task !== 'repair' && task !== 'grow') continue;
+        const actor = crew[index];
+        const target: Point = task === 'grow' ? farmDoor : [supply[0] + .9, supply[1] + .9];
+        const progressToSite = THREE.MathUtils.smoothstep(progress, .02, .38);
+        const x = THREE.MathUtils.lerp(from[0], target[0], progressToSite);
+        const z = THREE.MathUtils.lerp(from[1], target[1], progressToSite);
+        actor.figure.visible = progress > .02;
+        actor.figure.position.set(x, lunarHeight(x, z) + (progress < .38 ? actor.walk(progress * 5, true) : 0), z);
+        actor.figure.rotation.y = Math.atan2(target[0] - from[0], target[1] - from[1]);
+        if (progress >= .38) actor.work(progress, task);
       }
     }
     if (progress > .3) growLevel = growth[action.result.next.lastPlan.lights];

@@ -1,3 +1,6 @@
+import { freshCrew, isAssignments, resting, type Assignments, type Readiness } from '../data/crew.ts';
+import { resolveCrew, type Controller } from './crewOperations.ts';
+
 export const lunarTraining = {
   id: 'lunar-training',
   days: 7,
@@ -32,9 +35,10 @@ export interface DailyPlan {
   airMode: 'normal' | 'reserve';
   lights: keyof typeof lightSettings;
   recovery: boolean;
+  assignments: Assignments;
 }
 
-export const defaultPlan: DailyPlan = { location: 'habitat', airMode: 'normal', lights: 'low', recovery: true };
+export const defaultPlan: DailyPlan = { location: 'habitat', airMode: 'normal', lights: 'low', recovery: true, assignments: resting };
 
 export type StormPhase = 'clear' | 'warning' | 'rising' | 'peak' | 'recovery';
 export type Hazard = 'exposure' | 'air' | 'power' | 'food' | 'water';
@@ -50,6 +54,8 @@ export interface MissionState {
   food: number;
   crop: number;
   harvests: number;
+  readiness: Readiness;
+  controller: Controller;
   lastPlan: DailyPlan;
   outcome: Outcome;
 }
@@ -58,7 +64,8 @@ export function startMission(scenario: Scenario): MissionState {
   return {
     scenario, completedDays: 0, battery: scenarios[scenario].battery,
     air: lunarTraining.capacity.air, water: 8, wastewater: 2, food: lunarTraining.startingFood, crop: 0, harvests: 0,
-    lastPlan: { ...defaultPlan }, outcome: 'active',
+    readiness: { ...freshCrew }, controller: 'uninspected',
+    lastPlan: { ...defaultPlan, assignments: { ...resting } }, outcome: 'active',
   };
 }
 
@@ -81,16 +88,22 @@ export function isDailyPlan(value: unknown): value is DailyPlan {
   return (plan.location === 'shelter' || plan.location === 'habitat')
     && (plan.airMode === 'normal' || plan.airMode === 'reserve')
     && typeof plan.lights === 'string' && Object.hasOwn(lightSettings, plan.lights)
-    && typeof plan.recovery === 'boolean';
+    && typeof plan.recovery === 'boolean' && isAssignments(plan.assignments);
 }
 
 // Support and food are needed before the solar charging window. Later charging
 // cannot reverse a shortage that occurred in the first part of the day.
+export function forecastPower(day: number, controller: Controller) {
+  const base = lunarTraining.generation[day - 1];
+  return base === undefined ? 0 : base + Number(controller === 'repaired');
+}
+
 export function previewDay(state: MissionState, plan: DailyPlan) {
   const rules = lunarTraining;
   const day = state.completedDays + 1;
   const phase = stormPhase(day);
-  const generation = rules.generation[state.completedDays] ?? 0;
+  const operations = resolveCrew(state, plan, hasParticleRisk(phase));
+  const generation = forecastPower(day, state.controller);
   const peak = phase === 'peak' ? 1 : 0;
   const reserve = plan.airMode === 'reserve';
   const airPower = (reserve ? 1 : 2) + peak;
@@ -102,7 +115,7 @@ export function previewDay(state: MissionState, plan: DailyPlan) {
   const charged = Math.min(rules.capacity.battery, afterEssentials + generation);
   const lostGeneration = afterEssentials + generation - charged;
   const lights = lightSettings[plan.lights];
-  const recoveryPower = plan.recovery ? rules.recoveryPower : 0;
+  const recoveryPower = plan.recovery && !operations.tunedRecycler ? rules.recoveryPower : 0;
   const optionalDemand = recoveryPower + lights.power;
   const powerGap = Math.max(0, optionalDemand - charged);
   const airUsed = Math.min(state.air, airDemand);
@@ -111,10 +124,10 @@ export function previewDay(state: MissionState, plan: DailyPlan) {
   const wastewater = state.wastewater + drinkingWater;
   const afterDrinking = state.water - drinkingWater;
   const recovered = plan.recovery && charged >= recoveryPower
-    ? Math.min(rules.recoveredWater, wastewater, rules.capacity.water - afterDrinking) : 0;
+    ? Math.min(rules.recoveredWater + operations.recoveryBonus, wastewater, rules.capacity.water - afterDrinking) : 0;
   const availableWater = afterDrinking + recovered;
   const irrigated = lit && lights.growth > 0 && availableWater >= 1;
-  const growth = irrigated ? lights.growth : 0;
+  const growth = irrigated ? lights.growth + operations.extraGrowth : 0;
   const cropProgress = state.crop + growth;
   const cropMature = cropProgress >= rules.cropTarget;
   const eaten = Math.min(state.food, rules.foodPerDay);
@@ -135,7 +148,9 @@ export function previewDay(state: MissionState, plan: DailyPlan) {
     food: state.food - eaten + harvest,
     crop: harvest ? 0 : Math.min(cropProgress, rules.cropTarget - 1),
     harvests: state.harvests + Number(harvest > 0),
-    lastPlan: { ...plan },
+    readiness: operations.readiness,
+    controller: operations.controller,
+    lastPlan: { ...plan, assignments: { ...plan.assignments } },
     outcome: 'active',
   };
   if (hazards.length) next.outcome = 'interrupted';
@@ -145,7 +160,7 @@ export function previewDay(state: MissionState, plan: DailyPlan) {
 
   return {
     day, phase, next, generation, lostGeneration, essentialPower, recoveryPower, powerGap,
-    airPower, airUsed, lightPower: lights.power, growth, harvest, recovered, eaten, hazards,
+    airPower, airUsed, lightPower: lights.power, growth, harvest, recovered, eaten, hazards, operations,
   };
 }
 
@@ -155,5 +170,5 @@ export function commitDay(state: MissionState, plan: DailyPlan, expectedDay: num
   if (state.outcome !== 'active' || state.completedDays + 1 !== expectedDay || expectedDay > lunarTraining.days || !isDailyPlan(plan)) return;
   if (expectedDay === 1 && !plan.recovery) return;
   const result = previewDay(state, plan);
-  if (!result.powerGap) return result;
+  if (!result.powerGap && !Object.keys(result.operations.errors).length) return result;
 }

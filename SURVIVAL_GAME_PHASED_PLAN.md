@@ -506,9 +506,9 @@ Choose among models actually available in the implementation chat. Record the se
 
 ### Phase handoff record
 
-- Completed phases — Phase 0 baseline and Phase 1 basic Lunar daily survival.
-- Playable milestone — seven-day Lunar run with forecasts, End Day, delayed harvest, water recovery, daily reports, readiness results, and persistent retry/resume.
+- Completed phases — Phase 0 baseline, Phase 1 basic Lunar daily survival, and Phase 2 Lunar crew, visuals, and dialogue.
+- Playable milestone — seven-day Lunar run with forecasts, End Day, delayed harvest, water recovery, daily reports, readiness results, and persistent retry/resume. Five specialists now have tasks, readiness, portraits, world models, and dialogue. The storm briefing includes a looping GIF, still fallback, and shelter options.
 - Changed areas — daily rules and save journal in `src/mission/`, the HUD and facility controls in `index.html` and `src/ui/`, and committed presentation in the existing outpost scene and soundtrack.
-- Checks — 11 rule tests, production build, complete desktop run, and narrow-screen fallback checks. [Rules, baseline and verification](docs/LUNAR_SURVIVAL_VALIDATION.md).
+- Checks — 15 rule tests, production build, complete desktop crew and shelter run, legacy-save migration, and narrow-screen reduced-motion and missing-media checks. [Rules, baseline and verification](docs/LUNAR_SURVIVAL_VALIDATION.md).
 - Tuning still pending — first-time player pacing and resource balance, physical-device performance, and listening checks.
-- Next phase — five specialists, individual assignments and readiness, structured dialogue, and the animated storm briefing.
+- Next phase — extend Lunar to 14 days and add seeded, replayable weekly events and a mission log.

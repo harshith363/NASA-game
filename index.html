@@ -42,12 +42,17 @@
           </div>
         </header>
 
+        <nav id="mission-timeline" class="console mission-timeline" aria-label="Mission timeline"></nav>
         <div class="mission-deck">
           <section class="signals" aria-label="Mission updates">
             <div class="signal-card console">
-              <p class="eyebrow">Mission objectives</p>
-              <p id="mission-objective"></p>
-              <p id="day-briefing"></p>
+              <div id="story-card" class="story-card">
+                <img id="story-portrait" width="52" height="52" alt="" />
+                <div><p id="story-speaker" class="eyebrow"></p><h2 id="story-title"></h2><p id="day-briefing"></p></div>
+                <button id="story-action" class="action" type="button"></button>
+              </div>
+              <details><summary>Mission goal</summary><p id="mission-objective"></p></details>
+              <button id="open-storm" class="radio-action" type="button" hidden>Solar particle briefing</button>
               <p id="save-status" role="status"></p>
               <p id="forecast-notice" role="status"></p>
             </div>
@@ -58,6 +63,7 @@
                 <summary>Resource breakdown</summary>
                 <ul id="report-items"></ul>
               </details>
+              <p id="report-next"></p>
               <button id="continue-day" class="action" type="button">Continue</button>
             </section>
           </section>
@@ -65,67 +71,96 @@
           <form id="day-form" class="day-form">
             <section class="workbench console" aria-label="Mission controls">
               <nav id="facility-tabs" class="facility-tabs" aria-label="Outpost facilities"></nav>
-              <section id="facility" class="facility" aria-labelledby="building-name" hidden>
-                <button id="close-facility" class="icon-button close" type="button" aria-label="Close building controls">×</button>
-                <h2 id="building-name" tabindex="-1"></h2>
-                <p id="building-description"></p>
-                <div id="control-panel" class="facility-panel" hidden>
-                  <section class="situation" aria-label="Simulated outpost telemetry">
-                    <h3 id="tower-phase"></h3>
-                    <p id="tower-crew"></p>
-                    <p id="tower-power"></p>
-                    <p id="forecast-detail"></p>
-                  </section>
-                  <p id="tower-note"></p>
-                  <label for="location">Crew location</label>
-                  <select id="location" name="location">
-                    <option value="shelter">Storm shelter (+1 power)</option>
-                    <option value="habitat">Habitat (+0 power)</option>
-                  </select>
-                  <p>Shelter walls block some particles. The ventilation fan uses power.</p>
-                  <label for="air-mode">Air supply</label>
-                  <select id="air-mode" name="airMode">
-                    <option value="normal">Normal supply</option>
-                    <option value="reserve">Use reserve</option>
-                  </select>
-                  <p id="phase-demand"></p>
-                  <p id="tower-water" hidden></p>
-                  <button id="ask-help" class="radio-action" type="button">Ask for a hint</button>
-                  <p id="help-text" role="status"></p>
+              <section id="control-panel" class="facility facility-panel console building-panel" aria-labelledby="control-heading" hidden>
+                <header class="panel-header">
+                  <h2 id="control-heading" tabindex="-1">Mission Control Tower</h2>
+                  <button class="icon-button close" data-close-facility type="button" aria-label="Close tower">×</button>
+                </header>
+                <div id="tower-views" class="view-switch" aria-label="Tower view">
+                  <button type="button" class="radio-action" data-tower-view="tower-dashboard" aria-pressed="true">Mission</button>
+                  <button type="button" class="radio-action" data-tower-view="tower-observatory" aria-pressed="false">Observatory</button>
                 </div>
-                <div id="farm-panel" class="facility-panel" hidden>
-                  <h3>Next harvest</h3>
-                  <p id="crop-outlook"></p>
-                  <label for="lights">Grow lights</label>
+                <div id="tower-dashboard">
+                  <div class="metric-grid">
+                    <article class="metric" id="tower-safety"><div class="metric-label">Protection <span class="info-tip"><button type="button" aria-label="Why shelter uses power" aria-controls="shelter-help" aria-expanded="false">?</button><span id="shelter-help" class="tip-body" hidden>The walls provide shielding. Power runs the ventilation fan.</span></span></div><strong id="tower-phase"></strong><small id="forecast-detail"></small></article>
+                    <article class="metric"><span>Battery · after this plan</span><strong id="tower-power"></strong><small id="tower-budget"></small></article>
+                  </div>
+                  <fieldset class="decision-group"><legend>Crew location</legend>
+                    <div class="decision-grid">
+                      <label class="decision"><input type="radio" name="location" value="habitat" checked /><span><strong>Habitat</strong><small id="location-habitat"></small></span></label>
+                      <label class="decision"><input type="radio" name="location" value="shelter" /><span><strong>Storm shelter</strong><small id="location-shelter"></small></span></label>
+                    </div>
+                  </fieldset>
+                  <fieldset class="decision-group"><legend>Air supply</legend>
+                    <div class="decision-grid">
+                      <label class="decision"><input type="radio" name="airMode" value="normal" checked /><span><strong>Normal</strong><small id="air-normal"></small></span></label>
+                      <label class="decision"><input type="radio" name="airMode" value="reserve" /><span><strong>Reserve tank</strong><small id="air-reserve"></small></span></label>
+                    </div>
+                    <div class="control-label"><p id="air-status" class="inline-status"></p><span class="info-tip"><button type="button" aria-label="What carbon dioxide removal does" aria-controls="air-help" aria-expanded="false">?</button><span id="air-help" class="tip-body" hidden>The air system removes carbon dioxide the crew breathes out. Using reserve air still needs this system.</span></span></div>
+                  </fieldset>
+                  <details class="info"><summary>How power moves through the base</summary><div id="power-flow"></div></details>
+                  <div id="control-jobs"></div>
+                </div>
+                <div id="tower-observatory" hidden>
+                  <article class="observation"><p class="eyebrow">Historical observation · NASA DONKI</p>
+                    <h3>Solar energetic particles</h3>
+                    <div class="observation-track"><strong id="solar-observer"></strong><span aria-hidden="true">● ━━━━━</span><time id="solar-observed-at"></time></div>
+                    <p>A spacecraft detected fast-moving particles from the Sun. This record inspired the training alert.</p>
+                    <a id="solar-source" target="_blank" rel="noopener">View the archived observation</a>
+                  </article>
+                  <article class="observation"><p class="eyebrow">Reference fact · NASA</p>
+                    <h3>Earth to Moon</h3>
+                    <div class="signal-route"><span>🌍 Earth</span><span class="route-line">384,400 km average</span><span>🌑 Moon</span></div>
+                    <small>Diagram shown without a distance scale.</small>
+                    <p><a href="https://science.nasa.gov/moon/facts/" target="_blank" rel="noopener">Explore NASA Moon facts</a></p>
+                  </article>
+                </div>
+              </section>
+              <section id="farm-panel" class="facility facility-panel console building-panel" aria-labelledby="farm-heading" hidden>
+                  <header class="panel-header">
+                    <h2 id="farm-heading" tabindex="-1">Farm</h2>
+                    <button class="icon-button close" data-close-facility type="button" aria-label="Close farm">×</button>
+                  </header>
+                  <div id="farm-metrics" class="metric-grid"></div>
+                  <progress id="crop-stage" aria-label="Projected crop progress" max="6" value="0"></progress>
+                  <div class="control-label"><label for="lights">Grow lights</label><span class="info-tip"><button type="button" aria-label="How lights affect crops" aria-controls="lights-help" aria-expanded="false">?</button><span id="lights-help" class="tip-body" hidden>Higher settings use more battery. Crops also need available water to grow.</span></span></div>
                   <input id="lights" type="range" min="0" max="2" step="1" value="1" aria-describedby="light-output" />
                   <div class="light-steps" aria-hidden="true"><span>Off</span><span>Low</span><span>Full</span></div>
                   <p id="light-output"></p>
                   <section id="water-panel" class="water-panel" aria-labelledby="water-heading" hidden>
                     <h3 id="water-heading">Water recovery</h3>
                     <p id="water-outlook"></p>
-                    <label class="switch"><input id="water-recovery" type="checkbox" checked /> Run recycler (+1 power)</label>
+                    <label class="switch"><input id="water-recovery" type="checkbox" checked /> Run recycler <span id="recycler-cost"></span></label>
                   </section>
+                  <details class="info"><summary>Why harvest timing can move</summary><p>Crops need both water and light. The timeline estimates the next harvest with today's light and recovery settings, current reserves, and known shelter days.</p></details>
+                  <div id="farm-jobs"></div>
+              </section>
+              <section id="comms-panel" class="facility facility-panel console building-panel" aria-labelledby="comms-heading" hidden>
+                <header class="panel-header">
+                  <h2 id="comms-heading" tabindex="-1">Communications Centre</h2>
+                  <button class="icon-button close" data-close-facility type="button" aria-label="Close communications">×</button>
+                </header>
+                <div class="signal-route"><span>🌍 Earth</span><span class="route-line">Radio link</span><span>🌑 Outpost</span></div>
+                <div class="radio-forecast">
+                  <button id="request-forecast" class="radio-action" type="button">Request safety forecast</button>
+                  <p id="forecast-status" role="status"></p>
                 </div>
-                <div id="comms-panel" class="facility-panel" hidden>
-                  <h3>Forecast from Earth</h3>
-                  <p>Mission Control can confirm the particle alert and tell you when to use the shelter.</p>
-                  <div class="radio-forecast">
-                    <button id="request-forecast" class="radio-action" type="button">Request forecast</button>
-                    <p>A reply arrives during planning in about four seconds.</p>
-                    <p id="forecast-status" role="status"></p>
-                  </div>
-                  <details class="radio-archive">
-                    <summary>Historical NASA sources</summary>
-                    <p>NASA’s <span id="solar-observer"></span> spacecraft detected fast-moving particles from the Sun on <time id="solar-observed-at"></time>. That past event inspired this drill.</p>
-                    <a id="solar-source" target="_blank" rel="noopener">NASA event record</a>
-                    <a href="https://science.nasa.gov/science-research/heliophysics/how-nasa-will-protect-astronauts-from-space-radiation-at-the-moon/" target="_blank" rel="noopener">NASA: Space radiation and shielding</a>
-                  </details>
-                </div>
+                <div id="comms-jobs"></div>
+              </section>
+              <section id="crew-panel" class="facility crew-panel" aria-labelledby="crew-heading" hidden>
+                <header class="panel-header">
+                  <h2 id="crew-heading" tabindex="-1">Crew assignments</h2>
+                  <button id="close-crew" class="icon-button close" type="button" aria-label="Close crew controls">×</button>
+                </header>
+                <div class="control-label"><p>One job per astronaut each day.</p><span class="info-tip"><button type="button" aria-label="How readiness works" aria-controls="readiness-help" aria-expanded="false">?</button><span id="readiness-help" class="tip-body" hidden>Jobs spend readiness. Rest restores two points up to the maximum of four.</span></span></div>
+                <section id="crew-advice" class="crew-advice" aria-label="Crew advice" aria-live="polite" hidden></section>
+                <div id="crew-cards" class="crew-cards"></div>
               </section>
               <section class="command" aria-label="Daily plan">
                 <div class="day-preview" aria-live="polite" aria-atomic="true">
                   <p id="plan-summary"></p>
                   <p id="plan-preview"></p>
+                  <p id="plan-crew"></p>
                   <p id="plan-warning" class="warning" hidden></p>
                 </div>
                 <button id="end-day" class="action" type="submit" aria-describedby="plan-preview plan-warning">End Day</button>
@@ -149,6 +184,7 @@
           <h2 id="outcome" tabindex="-1"></h2>
           <p id="outcome-detail"></p>
           <p id="outcome-resources"></p>
+          <p id="crew-achievement"></p>
           <details class="debrief-science">
             <summary>The science behind the drill</summary>
             <p>Shielding can reduce exposure to energetic particles. Space-grown crops can add fresh food to stored meals. This training run uses fictional resource units, sunlight levels, and crop timing.</p>
@@ -164,6 +200,40 @@
         </section>
       </div>
     </main>
+    <dialog id="timeline-detail" class="console storm-briefing" aria-labelledby="timeline-title">
+      <header><h2 id="timeline-title"></h2></header>
+      <div id="timeline-body"></div>
+      <form method="dialog"><button class="action" type="submit">Close</button></form>
+    </dialog>
+    <dialog id="storm-briefing" class="console storm-briefing" aria-labelledby="storm-heading">
+      <header>
+        <h2 id="storm-heading" tabindex="-1">Solar particle alert</h2>
+        <button id="storm-close" class="icon-button close" type="button" aria-label="Close storm briefing">×</button>
+      </header>
+      <figure>
+        <img width="640" height="264" alt="A simulated particle trace climbs as five astronauts move into a shielded room." hidden />
+        <figcaption>Training illustration of rising readings and the crew taking shelter.</figcaption>
+        <button id="storm-animation" class="radio-action" type="button" hidden>Pause illustration</button>
+      </figure>
+      <dl class="storm-facts">
+        <div><dt>Situation</dt><dd>The outpost has received a solar particle alert.</dd></div>
+        <div><dt>Cause</dt><dd>Energetic particles from the Sun can increase radiation exposure during outside work.</dd></div>
+        <div><dt>At risk</dt><dd id="storm-risk"></dd></div>
+      </dl>
+      <section id="storm-dialogue" class="storm-dialogue" aria-label="Crew advice" aria-live="polite"></section>
+      <div class="storm-replies" aria-label="Reply to crew">
+        <button class="radio-action" type="button" data-storm-reply="risk">Explain the risk</button>
+        <button class="radio-action" type="button" data-storm-reply="tradeoff">Compare shelter plans</button>
+      </div>
+      <div id="storm-options" class="storm-options" aria-label="Shelter options" hidden></div>
+      <button id="storm-controls" class="action" type="button">Open controls</button>
+      <details class="radio-archive">
+        <summary>Science and the NASA observation</summary>
+        <p>Material around the shelter reduces exposure. The fan circulates air and uses battery power. NASA observations inspired the alert. The illustration and schedule are simulated.</p>
+        <a id="storm-source" target="_blank" rel="noopener">Archived NASA particle observation</a>
+        <a href="https://science.nasa.gov/science-research/heliophysics/how-nasa-will-protect-astronauts-from-space-radiation-at-the-moon/" target="_blank" rel="noopener">NASA shielding explanation</a>
+      </details>
+    </dialog>
     <section id="flight-intro" class="flight-intro" data-stage="launch" aria-labelledby="intro-title">
       <button id="intro-skip" class="intro-skip radio-action" type="button" hidden>Skip intro</button>
       <div class="intro-overlay">

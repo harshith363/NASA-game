@@ -413,3 +413,164 @@ button { cursor: pointer; }
 .switch input { width: 20px; height: 20px; accent-color: #a7dfa2; }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; }
 .reduce-motion #risk-trace path { stroke-dashoffset: 0; }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.crew-tab { --facility-color: #d1c1ff; }
+.crew-panel { --facility-color: #d1c1ff; }
+.crew-cards { display: grid; gap: 8px; margin-top: 10px; }
+.crew-card { border: 1px solid var(--line); border-inline-start: 3px solid var(--crew-accent); border-radius: 5px; background: #1d222e; padding: 9px; }
+.crew-identity, .dialogue-turn { display: flex; align-items: flex-start; gap: 8px; }
+.crew-identity { align-items: center; }
+.crew-identity div { flex: 1; min-width: 0; }
+.crew-identity h4 { margin: 0; }
+.crew-identity img, .dialogue-turn img { flex: none; border-radius: 4px; }
+.crew-identity button { margin: 0; }
+.crew-card .crew-skill { margin-block: 6px; }
+.crew-card .crew-readiness, .task-note { color: #ffcf9f; }
+.crew-card label { display: block; margin-top: 5px; }
+.crew-card select { display: block; width: 100%; min-height: 44px; margin-top: 3px; border: 1px solid var(--line); border-radius: 4px; background: #222b3b; padding: 5px; }
+.crew-advice { scroll-margin: 10px; margin-top: 8px; border: 1px solid #a89bd0; border-radius: 4px; padding: 8px; background: #26293a; }
+.crew-advice p { margin-top: 4px; }
+.storm-briefing { width: min(650px, calc(100% - 24px)); max-height: 92dvh; padding: clamp(12px, 3vw, 22px); color: inherit; overflow: auto; }
+.storm-briefing::backdrop { background: #070a12b5; }
+.storm-briefing header { position: relative; padding-right: 50px; min-height: 44px; }
+.storm-briefing .close { top: 0; right: 0; }
+.storm-briefing figure { margin: 4px 0 12px; }
+.storm-briefing figure img { width: 100%; height: auto; display: block; border-radius: 5px; }
+.storm-briefing figcaption { margin-top: 4px; color: var(--muted); font-size: .85rem; }
+.storm-facts { display: grid; gap: 6px; margin: 10px 0; }
+.storm-facts > div { display: grid; grid-template-columns: 75px 1fr; gap: 8px; }
+.storm-facts dt { color: var(--signal); font-weight: 700; }
+.storm-facts dd { margin: 0; }
+.storm-dialogue, .storm-options { display: grid; gap: 7px; margin-top: 10px; }
+.dialogue-turn, .storm-option { padding: 8px; border: 1px solid var(--line); border-radius: 5px; background: #202939; }
+.dialogue-turn strong { display: block; margin-bottom: 2px; }
+.storm-replies { display: flex; flex-wrap: wrap; gap: 6px; }
+.storm-replies [aria-pressed="true"] { border-color: var(--signal); }
+@media (max-width: 460px) {
+  .facility-tab { padding-inline: 4px; }
+  .crew-identity img { width: 42px; height: 42px; }
+}
+
+#storm-controls { margin-top: 10px; }
+
+.mission-timeline { pointer-events: auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 5px; align-self: center; width: min(100%, 680px); }
+.mission-timeline button { min-width: 0; min-height: 44px; border: 1px solid transparent; border-radius: 4px; background: #222836; color: #e0e5ee; line-height: 1.15; padding: 4px 2px; }
+.mission-timeline strong, .mission-timeline small { display: block; }
+.mission-timeline small { margin-top: 3px; overflow-wrap: anywhere; font-size: .72rem; }
+.mission-timeline [data-state="today"] { background: #ffca8d; color: #241a10; }
+.mission-timeline [data-state="done"] { color: #b7ebcc; background: #253831; }
+.mission-timeline button:hover { border-color: var(--signal); }
+#timeline-body p { margin-block: 8px; }
+#timeline-detail form { margin-top: 16px; }
+.story-card { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 7px 10px; }
+.story-card img { border-radius: 5px; }
+.story-card h2 { font-size: 1.12rem; line-height: 1.15; }
+.story-card p:last-child { margin-top: 4px; }
+.story-card button { grid-column: 1 / -1; white-space: normal; }
+.signal-card > details { color: var(--muted); }
+.signal-card summary, .info summary { cursor: pointer; }
+.building-panel { border-top: 2px solid var(--facility-color); margin: 0; }
+.building-panel h2 { color: var(--facility-color); min-height: 36px; }
+.metric-grid, .decision-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.metric { border: 1px solid var(--line); background: #212836; border-radius: 5px; padding: 7px 9px; min-width: 0; }
+.metric span, .metric small, .decision small { display: block; color: #d2d7df; }
+.metric strong { display: block; color: #fff2de; font-size: 1.13rem; }
+.metric span, .metric small, .decision small { font-size: .79rem; }
+.metric[data-tone="safe"] { border-inline-start: 3px solid #98d7aa; }
+.metric[data-tone="attention"] { border-inline-start: 3px solid #ffca8d; }
+.metric[data-tone="danger"] { border-inline-start: 3px solid #ff969c; background: #422933; }
+.decision-group { margin: 9px 0; padding: 0; border: 0; min-width: 0; }
+.decision-group legend { font-weight: 700; margin-bottom: 4px; }
+.facility-panel .decision { display: flex; align-items: center; gap: 6px; margin: 0; padding: 6px; min-height: 56px; border: 1px solid var(--line); border-radius: 5px; background: #202735; cursor: pointer; }
+.decision:has(:checked) { border-color: #ffca8d; background: #393024; }
+.decision input { flex: none; accent-color: #ffca8d; }
+.decision:hover { outline: 1px solid var(--signal); }
+.inline-status { margin-top: 5px; }
+.view-switch { display: flex; gap: 6px; margin: 3px 0 8px; }
+.view-switch button { margin: 0; }
+.view-switch [aria-pressed="true"] { border-color: var(--signal); color: #ffe3bd; }
+.info { margin: 7px 0; padding: 5px 7px; border: 1px solid var(--line); border-radius: 5px; }
+#power-flow { display: grid; gap: 4px; margin-top: 5px; }
+#crop-stage { display: block; width: 100%; margin-block: 8px 12px; accent-color: #a7dfa2; }
+.job-card, .observation { margin-top: 8px; padding: 8px; border: 1px solid var(--line); border-inline-start: 3px solid var(--crew-accent, var(--facility-color)); border-radius: 5px; background: #1e2532; }
+.job-card img { float: left; border-radius: 4px; margin-right: 8px; }
+.job-card h3, .observation h3 { margin: 0; }
+.job-actions { clear: both; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; padding-top: 5px; }
+.job-actions .radio-action { margin: 0; }
+.job-actions select { margin: 0; }
+.observation a { color: #a4dcee; }
+.observation-track, .signal-route { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 6px 0; }
+.route-line { flex: 1; text-align: center; border-bottom: 2px dashed var(--facility-color); font-size: .76rem; }
+.marker-label { display: grid; text-align: left; }
+.marker-status { color: #d3dbe9; font-size: .73em; }
+.map-marker[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--facility-color), 0 3px 12px #080a0c; }
+.readiness-track { display: flex; gap: 4px; margin-block: 3px; }
+.readiness-track span { width: 17px; height: 5px; border-radius: 2px; background: #464d60; }
+.readiness-track span[data-filled] { background: var(--crew-accent); }
+.info-tip { display: inline-block; position: relative; }
+.info-tip button { border-radius: 50%; color: #d6ebf5; background: #253347; cursor: help; padding: 0; width: 26px; height: 26px; border: 1px solid #7c8798; }
+.tip-body { position: absolute; z-index: 6; width: 166px; top: 100%; right: 0; padding: 7px; border: 1px solid #7c8798; border-radius: 4px; background: #202735; color: #fff; font-size: .79rem; }
+.metric .tip-body { position: absolute; color: #fff; left: 0; right: auto; }
+@media (max-width: 760px) {
+  .mission-timeline { gap: 2px; }
+  .mission-timeline small { font-size: .61rem; }
+  .story-card img { width: 38px; height: 38px; }
+  .building-panel { max-height: 44dvh; }
+  .map-marker { max-width: 116px; white-space: normal; }
+  .tip-body { width: 140px; }
+}
+.control-label { display: flex; align-items: baseline; gap: 6px; }
+.control-label .tip-body { top: auto; bottom: 100%; }
+.marker-crew { color: #fff0ce; font-size: .73em; }
+.marker-crew:empty { display: none; }
+#crew-achievement { margin-bottom: 10px; color: #b7ebcc; }
+/* Keep the planning tray reachable while each facility scrolls independently. */
+.workbench { overflow: visible; backdrop-filter: none; }
+.facility-tabs, .command { position: relative; z-index: 2; background: #161821f5; }
+.building-panel, .crew-panel {
+  position: fixed;
+  z-index: 3;
+  left: var(--panel-x, auto);
+  right: var(--panel-right, var(--edge));
+  bottom: var(--planning-tray-height, 166px);
+  width: min(450px, calc(100vw - 2 * var(--edge)));
+  max-height: min(58dvh, 530px, calc(100dvh - var(--planning-tray-height, 166px) - var(--panel-ceiling, 180px)));
+  margin: 0;
+  background: var(--console);
+  box-shadow: 0 12px 42px #080a12b5;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-top: 76px;
+}
+.panel-header {
+  position: sticky;
+  top: -15px;
+  z-index: 4;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin: -15px -15px 10px;
+  padding: 10px 15px;
+  background: #1c202b;
+  border-bottom: 1px solid var(--line);
+}
+.facility .panel-header h2 { padding: 0; min-height: 0; }
+.panel-header .close { position: static; flex: none; width: 44px; height: 44px; margin: 0; }
+.metric-label { display: flex; align-items: center; gap: 5px; font-size: .79rem; }
+.metric .info-tip { display: inline-block; }
+.mission-timeline strong { white-space: nowrap; font-size: .86rem; }
+#plan-crew { margin-top: 4px; color: #b7d7e2; font-size: .74rem; }
+@media (max-width: 999px), (max-height: 679px) {
+  .building-panel, .crew-panel {
+    left: auto;
+    right: var(--edge);
+    max-height: min(55dvh, calc(100dvh - var(--planning-tray-height, 166px) - var(--panel-ceiling, 180px)));
+  }
+}
+@media (max-width: 760px) {
+  .building-panel, .crew-panel { width: calc(100vw - 2 * var(--edge)); border-radius: 6px 6px 0 0; }
+  .panel-header { top: -12px; margin: -12px -12px 10px; padding: 8px 12px; }
+  .mission-timeline small { overflow-wrap: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}

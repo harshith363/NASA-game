@@ -1,7 +1,7 @@
 import { archivedSolarEvent } from '../data/archivedSolarEvent';
 import { lunarTraining, type Outcome } from '../mission/dailyMission';
 
-export function mountMissionRadio(onForecast: () => void) {
+export function mountMissionRadio(onForecast: (received: boolean) => void) {
   const request = document.querySelector<HTMLButtonElement>('#request-forecast')!;
   const status = document.querySelector<HTMLElement>('#forecast-status')!;
   const observedAt = document.querySelector<HTMLTimeElement>('#solar-observed-at')!;
@@ -37,7 +37,7 @@ export function mountMissionRadio(onForecast: () => void) {
         : `Use the shelter on days ${storm} and ${storm + 1}. On day ${storm + 1}, the air system needs one extra power. Reserve mode also needs one extra air.`;
       status.textContent = text;
       notice.textContent = text;
-      onForecast();
+      onForecast(true);
     }, 4000);
   });
 
@@ -49,6 +49,7 @@ export function mountMissionRadio(onForecast: () => void) {
       received = false;
       status.textContent = '';
       notice.textContent = '';
+      onForecast(false);
       render(day, active ? 'active' : 'ready');
     },
   };

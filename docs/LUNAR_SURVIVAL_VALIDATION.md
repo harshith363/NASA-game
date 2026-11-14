@@ -41,3 +41,35 @@ Use shelter on days three and four. Keep the recycler on.
 - The five baseline tests and six new rule tests pass, as does the production build. Vite still warns about a JS chunk over 500 kB.
 - Chrome checks covered the full desktop run, duplicate submissions, reload during animation, report and debrief resume, alternate-scenario retry, delayed radio, mobile keyboard controls, corrupt-save recovery, reduced motion, static fallback, and interruption.
 - Intended-age playtesting, physical-phone layout and frame rate, and listening on speakers or headphones remain pending. The seven-day values and pacing are initial playtest settings.
+
+
+## Phase 2 crew and storm briefing
+
+Each astronaut starts with four readiness and gets one main assignment per day. Rest restores two up to the limit. A task generally costs two readiness. Specialists spend one readiness in their main role. A specialist can still operate with lower readiness when Leena runs shelter checks. Outdoor jobs are unavailable while sheltering or during the particle rise and peak.
+
+| Specialist | Effect |
+| --- | --- |
+| Aya Chen, power engineer | Inspect the controller to unlock repair. Aya repairs it in one shift. A backup needs two. The completed repair adds one power per future day. |
+| Mateo Silva, life-support engineer | Tunes the recycler for zero extra power that day. A backup can reclaim up to one extra water, subject to the wastewater and storage limits. |
+| Imani Okafor, botanist | Adds two crop progress with lights and water. A backup adds one. |
+| Leena Rao, crew safety officer | Reduces everyone else’s daily task cost by one when she runs shelter checks. |
+| Noah Reyes, communications specialist | Adds up to two upcoming forecasts to the daily report. A backup adds one. |
+
+Save schema 2 journals the five assignments per day. Existing schema 1 saves replay with all five resting on historical turns, preserving their previous resource outcomes. New days start with Rest selected for everyone. Controller work takes effect on the day after repair.
+
+The day-two warning opens the illustrated briefing. Players can reopen it during the alert, read dialogue based on their reserves, pause the visual, compare shelter options, and apply a plan on days three and four. Forecast comparisons made before the alert explicitly use current reserves. The report shows what happened to the crew, the battery, and the crop after the player commits.
+
+The 15 rule tests and production build passed. Chrome verification covered a full seven-day run with all five specialists, controller inspection and repair, dialogue and projected choices, GIF pause, plan application, resume, retry, and migration from an unread schema 1 report. Narrow-screen checks covered Escape, reduced-motion text, and missing-poster recovery. Physical-device timing and intended-age playtesting are still pending. Vite still reports a bundle above 500 kB.
+
+## Experience playtest — 14 November 2026
+
+Played the guided seven-day mission in Chrome, assigning all five specialists and finishing with “Crew safe and outpost ready.” Verified draft retention between buildings, controller repair, Observatory, reload during resolution, report resume, historical timeline reports, and reduced-motion/static-map fallback with a legacy save. No browser page errors were reported.
+
+The playtest led to these UI fixes:
+
+- Facility and crew panels scroll independently at every breakpoint. Their height respects the timeline and the measured planning tray, preserving access to mission context and End Day.
+- Sticky panel headers retain a 44-pixel close button, including after scrolling to the final crew member. Panel scrolling does not chain into the underlying page.
+- The daily plan shows working/resting crew counts and explicitly explains that assignments reset each day.
+- Story actions ignore clicks while a turn is resolving or its report is awaiting review.
+
+Responsive Chrome checks passed at 1280×800, 820×1180, 900×600, 360×640, and 390×844. Each size covered all four panels, scrolled close-button hit targets, End Day visibility and hit targets, panel dismissal, and horizontal overflow. Screenshots were visually inspected on desktop and phone layouts. All 15 simulation tests, TypeScript checking, the production build, and whitespace checks passed. Vite's existing large-chunk warning remains. Physical-phone performance, audio listening, and intended-age usability testing remain pending.

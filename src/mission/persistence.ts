@@ -1,7 +1,8 @@
+import { resting } from '../data/crew.ts';
 import { commitDay, isDailyPlan, lunarTraining, startMission, type DailyPlan, type DayResult, type Scenario } from './dailyMission.ts';
 
 export const saveKey = 'lunar-training-run';
-const version = 1;
+const version = 2;
 
 export interface MissionSave {
   version: typeof version;
@@ -20,18 +21,24 @@ export function createSave(scenario: Scenario): MissionSave {
 // turns restores the resources, fixed event schedule, and last report together.
 function restoreRun(save: MissionSave) {
   let state = startMission(save.scenario);
-  let last: DayResult | undefined;
+  const history: DayResult[] = [];
   for (const [index, plan] of save.plans.entries()) {
-    last = commitDay(state, plan, index + 1);
+    const last = commitDay(state, plan, index + 1);
     if (!last) return;
+    history.push(last);
     state = last.next;
   }
-  return { save, state, last };
+  return { save, state, last: history.at(-1), history };
 }
 
 export function parseSave(raw: string) {
   try {
-    const save = JSON.parse(raw) as Partial<MissionSave>;
+    const value = JSON.parse(raw) as Partial<Omit<MissionSave, 'version'>> & { version?: number };
+    if (value?.version === 1 && Array.isArray(value.plans)) {
+      value.plans = value.plans.map(plan => ({ ...plan, assignments: { ...resting } }));
+      value.version = version;
+    }
+    const save = value;
     if (save?.version !== version || save.mode !== lunarTraining.id || typeof save.runId !== 'string'
       || !save.runId || (save.scenario !== 'standard' && save.scenario !== 'lowPower')
       || typeof save.reviewed !== 'boolean' || !Array.isArray(save.plans) || save.plans.length > lunarTraining.days

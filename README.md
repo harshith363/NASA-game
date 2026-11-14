@@ -4,6 +4,8 @@ Land at a lunar outpost and keep five astronauts safe for seven days. Read the d
 
 The Farm controls grow lights and introduces water recovery on day two. The Control Tower shows generation and demand separately, along with air and shelter choices. The Communications Centre can provide a forecast and includes the archived NASA observation that inspired the alert. Resource units, daily sunlight, and crop timing are training parameters.
 
+The Crew panel lets you consult five specialists and assign each astronaut one job per day. Rest restores readiness. The day-two storm briefing includes an illustration, crew advice, and shelter plans you can compare before applying one on an alert day.
+
 The browser saves each committed turn. **Resume mission** restores the current briefing, unread report, or debrief. **Start new mission** replaces the existing run. The debrief offers standard and low-battery training. Settings include audio and reduced motion. The game supports keyboard controls and a static map when WebGL is unavailable.
 
 ## Run locally
