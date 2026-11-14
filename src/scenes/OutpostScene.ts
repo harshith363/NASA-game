@@ -1,0 +1,455 @@
+import * as THREE from 'three';
+import { buildings, type Building } from '../data/buildings';
+import { harvestTarget, type MissionEvent, type MissionState, type Phase } from '../mission/solarStorm';
+import { makeFacility } from './facilities';
+import { createAstronaut, createLander } from './flightModels';
+import { buildTerrain, lunarHeight } from './lunarTerrain';
+
+const coordinates = { farm: [-8.5, 2.8], control: [0, -4.9], comms: [8.5, 2.8] };
+type Point = [number, number];
+const habitat: Point = [4.1, -3.4];
+const shelterDoor: Point = [0, -2.65];
+const farmDoor: Point = [-5.65, 2.4];
+const beaconColors = { warning: 0xfcb96e, rising: 0xff8d59, peak: 0xff6964, recovery: 0x94e6a4 };
+type BuildingId = Building['id'];
+
+export function mountOutpost(
+  container: HTMLElement,
+  markers: Record<BuildingId, HTMLButtonElement>,
+  activate: (building: Building) => void,
+) {
+  const canvas = document.createElement('canvas');
+  let renderer: THREE.WebGLRenderer;
+  const context = canvas.getContext('webgl2', { antialias: true, alpha: false });
+  if (!context) return mountStaticMap(container, markers);
+
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, context, antialias: true });
+  } catch {
+    return mountStaticMap(container, markers);
+  }
+
+  container.append(canvas);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0910);
+  scene.fog = new THREE.FogExp2(0x14141d, .014);
+  scene.add(new THREE.HemisphereLight(0xe0e9ff, 0x706055, 2.1));
+  const sun = new THREE.DirectionalLight(0xffe3bf, 3.1);
+  sun.position.set(-18, 14, -12);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1536, 1536);
+  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, far: 72 });
+  sun.shadow.normalBias = .055;
+  scene.add(sun);
+  buildTerrain(scene);
+
+  const models = buildings.map((building) => {
+    const model = makeFacility(building);
+    const [x, z] = coordinates[building.id];
+    model.group.position.set(x, lunarHeight(x, z), z);
+    model.group.userData.building = building;
+    model.group.rotation.y = { farm: -.16, control: .10, comms: -.24 }[building.id];
+    scene.add(model.group);
+    return { building, ...model };
+  });
+
+  const pathMaterial = new THREE.MeshStandardMaterial({ color: 0x746c64, roughness: 1 });
+  const path = new THREE.BufferGeometry();
+  const routes = [
+    [[-8.5, 2.8], [8.5, 2.8]],
+    [[0, 2.30], [0, -4.9]],
+  ];
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (const [[ax, az], [bx, bz]] of routes) {
+    const length = Math.hypot(bx - ax, bz - az);
+    const dx = (bz - az) / length * .49;
+    const dz = (ax - bx) / length * .49;
+    const start = positions.length / 3;
+    const subdivisions = Math.ceil(length * 4);
+    for (let index = 0; index <= subdivisions; index++) {
+      const ratio = index / subdivisions;
+      const x = THREE.MathUtils.lerp(ax, bx, ratio);
+      const z = THREE.MathUtils.lerp(az, bz, ratio);
+      positions.push(x - dx, lunarHeight(x - dx, z - dz) + .045, z - dz);
+      positions.push(x + dx, lunarHeight(x + dx, z + dz) + .045, z + dz);
+      const face = start + index * 2;
+      if (index < subdivisions) indices.push(face, face + 2, face + 1, face + 1, face + 2, face + 3);
+    }
+  }
+  path.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  path.setIndex(indices);
+  path.computeVertexNormals();
+  pathMaterial.side = THREE.DoubleSide;
+  const roads = new THREE.Mesh(path, pathMaterial);
+  roads.receiveShadow = true;
+  scene.add(roads);
+
+  const lander = createLander();
+  const landingZ = 9.3;
+  const landingHeight = lunarHeight(0, landingZ);
+  lander.position.set(0, landingHeight, landingZ);
+  lander.rotation.y = Math.PI;
+  const ramp = new THREE.Mesh(
+    new THREE.BoxGeometry(.83, .055, 2.65),
+    new THREE.MeshStandardMaterial({ color: 0x81786b, roughness: .8 }),
+  );
+  ramp.position.set(0, .81, 2.24);
+  ramp.rotation.x = .55;
+  ramp.castShadow = true;
+  lander.add(ramp);
+  scene.add(lander);
+  const crew = Array.from({ length: 3 }, () => createAstronaut());
+  for (const { figure } of crew) {
+    figure.rotation.y = Math.PI;
+    figure.visible = false;
+    scene.add(figure);
+  }
+
+  const residence = new THREE.Group();
+  const livingPod = new THREE.Mesh(new THREE.CylinderGeometry(.79, .79, 2.25, 12),
+    new THREE.MeshStandardMaterial({ color: 0xbcb8b0, roughness: .6 }));
+  livingPod.rotation.z = Math.PI / 2;
+  livingPod.position.y = .9;
+  livingPod.castShadow = true;
+  residence.add(livingPod);
+  const hatch = new THREE.Mesh(new THREE.BoxGeometry(.7, .77, .12),
+    new THREE.MeshStandardMaterial({ color: 0x7c878d, roughness: .5 }));
+  hatch.position.set(0, .57, .76);
+  residence.add(hatch);
+  residence.position.set(habitat[0], lunarHeight(...habitat), habitat[1] - .93);
+  scene.add(residence);
+
+  const crate = new THREE.Group();
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(.44, .16, .32),
+    new THREE.MeshStandardMaterial({ color: 0xcb9553 }));
+  crate.add(tray);
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x9bd670, emissive: 0x20501b, emissiveIntensity: .55 });
+  for (const x of [-.135, 0, .135]) {
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(.092, 0), leafMaterial);
+    leaf.position.set(x, .105, 0);
+    crate.add(leaf);
+  }
+  crate.visible = false;
+  scene.add(crate);
+
+  const flowGeometry = new THREE.SphereGeometry(.085, 8, 6);
+  const supply: Point = [0, 2.55];
+  const flows = [shelterDoor, farmDoor].map((target, index) => ({
+    target,
+    nodes: Array.from({ length: 5 }, () => {
+      const node = new THREE.Mesh(flowGeometry, new THREE.MeshBasicMaterial({ color: index ? 0xbaf39d : 0x98eaff }));
+      node.visible = false;
+      scene.add(node);
+      return node;
+    }),
+  }));
+  const powerUnit = new THREE.Mesh(new THREE.BoxGeometry(.95, .42, .65),
+    new THREE.MeshStandardMaterial({ color: 0x5f6571, emissive: 0x92c9e7, emissiveIntensity: .21 }));
+  powerUnit.position.set(supply[0], lunarHeight(...supply) + .24, supply[1]);
+  scene.add(powerUnit);
+
+  const camera = new THREE.PerspectiveCamera(41, 1, .2, 240);
+  const look = new THREE.Vector3(0, 1, 0);
+  const aim = new THREE.Vector3();
+  const anchor = new THREE.Vector3();
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const targets = models.map((model) => model.group);
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let selected: BuildingId | undefined;
+  let hovered: BuildingId | undefined;
+  let growLevel = .46;
+  let phase: Phase = 'warning';
+  let alert = false;
+  let committed: MissionState | undefined;
+  let action: Extract<MissionEvent, { type: 'shift' | 'recovery' }> | undefined;
+  let actionStart = 0;
+  const growth = { off: 0, dim: .46, full: 1.65 };
+  const crewDoor = (state: MissionState): Point => state.crew === 'shelter' ? shelterDoor : habitat;
+  let width = 1;
+  let height = 1;
+  let frame = 0;
+  let fallback: ReturnType<typeof mountStaticMap> | undefined;
+  let arrivalStart: number | undefined;
+  let resolveReady: () => void;
+  const ready = new Promise<void>((resolve) => { resolveReady = resolve; });
+
+  function renderArrival(now: number) {
+    if (arrivalStart === undefined) return 1;
+    const age = now - arrivalStart;
+    lander.position.y = landingHeight + (1 - THREE.MathUtils.smoothstep(age, 0, 2100)) * 4.8;
+    ramp.visible = age >= 2000;
+    const progress = THREE.MathUtils.clamp((age - 2100) / 4300, 0, 1);
+    walkCrew([[0, landingZ - 1.1], [0, 3.4], habitat], progress, true);
+    return THREE.MathUtils.smoothstep(age, 2400, 6600);
+  }
+
+  function walkCrew(route: Point[], progress: number, fromLander = false) {
+    const lengths = route.slice(1).map(([x, z], i) => Math.hypot(x - route[i][0], z - route[i][1]));
+    const length = lengths.reduce((sum, value) => sum + value, 0);
+    for (const [i, { figure, walk }] of crew.entries()) {
+      const step = (progress - i * .057) / .87;
+      figure.visible = step > 0 && step < 1;
+      if (!figure.visible) continue;
+      const distance = step * length;
+      let remaining = distance;
+      let edge = 0;
+      while (edge < lengths.length - 1 && remaining > lengths[edge]) remaining -= lengths[edge++];
+      const [ax, az] = route[edge];
+      const [bx, bz] = route[edge + 1];
+      const t = remaining / Math.max(.01, lengths[edge]);
+      const x = THREE.MathUtils.lerp(ax, bx, t) + (i - 1) * .28;
+      const z = THREE.MathUtils.lerp(az, bz, t);
+      let y = lunarHeight(x, z);
+      if (fromLander && edge === 0) y = Math.max(y, landingHeight + 1.4 - distance * .59);
+      figure.rotation.y = Math.atan2(bx - ax, bz - az);
+      figure.position.set(x, y + walk(distance, true), z);
+    }
+  }
+
+  function clearAction() {
+    arrivalStart = undefined;
+    action = undefined;
+    lander.position.y = landingHeight;
+    ramp.visible = true;
+    crate.visible = false;
+    for (const { figure } of crew) figure.visible = false;
+    for (const flow of flows) for (const node of flow.nodes) node.visible = false;
+  }
+
+  function renderAction(now: number) {
+    if (!action) return;
+    const progress = THREE.MathUtils.clamp((now - actionStart) / Math.max(1, action.duration), 0, 1);
+    if (action.type === 'shift') {
+      const from = crewDoor(action.previous);
+      const to = crewDoor(action.state);
+      if (from !== to) walkCrew([from, to], progress / .65);
+      const outputs = [action.result.airPower, action.result.lightPower];
+      for (const [index, { target, nodes }] of flows.entries()) {
+        const destination = index === 0 ? to : target;
+        for (const [i, node] of nodes.entries()) {
+          node.visible = Boolean(outputs[index] && progress > .18 && progress < .9);
+          const t = (progress * 2.3 + i / nodes.length) % 1;
+          const x = THREE.MathUtils.lerp(supply[0], destination[0], t);
+          const z = THREE.MathUtils.lerp(supply[1], destination[1], t);
+          node.position.set(x, lunarHeight(x, z) + .28, z);
+        }
+      }
+      if (progress > .3) growLevel = growth[action.state.lights];
+    } else {
+      if (!action.state.harvest) walkCrew([shelterDoor, habitat], progress);
+      else if (progress < .47) walkCrew([shelterDoor, farmDoor], progress / .47);
+      else {
+        walkCrew([farmDoor, [0, 2.3], habitat], (progress - .5) / .49);
+        crate.visible = action.state.harvest > 0 && crew[0].figure.visible;
+        crate.scale.setScalar(action.state.harvest >= harvestTarget ? 1 : .7);
+        crate.position.copy(crew[0].figure.position);
+        crate.position.y += .54;
+        crate.position.x += .14;
+      }
+    }
+  }
+
+  function present(event: MissionEvent) {
+    fallback?.present(event);
+    switch (event.type) {
+      case 'arrival':
+        if (!fallback && !reducedMotion.matches) arrivalStart = performance.now();
+        break;
+      case 'warning':
+        clearAction();
+        alert = true;
+        break;
+      case 'shift':
+      case 'recovery':
+        clearAction();
+        committed = event.state;
+        phase = event.state.phase;
+        if (event.duration && !fallback) {
+          action = event;
+          actionStart = performance.now();
+        } else growLevel = growth[event.state.lights];
+        break;
+      case 'settled':
+      case 'reset':
+      case 'debrief':
+        clearAction();
+        committed = event.state;
+        phase = event.state.phase;
+        growLevel = growth[event.state.lights];
+        break;
+    }
+  }
+
+  function pick(event: MouseEvent) {
+    const rect = canvas.getBoundingClientRect();
+    pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2);
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObjects(targets, true).find(({ object }) => object.visible);
+    let item = hit?.object as THREE.Object3D | undefined;
+    while (item && !item.userData.building) item = item.parent ?? undefined;
+    return item?.userData.building as Building | undefined;
+  }
+
+  canvas.addEventListener('pointermove', (event) => {
+    hovered = pick(event)?.id;
+    canvas.style.cursor = hovered ? 'pointer' : '';
+  });
+  canvas.addEventListener('pointerleave', () => { hovered = undefined; });
+  canvas.addEventListener('click', (event) => {
+    const building = pick(event);
+    if (building) activate(building);
+  });
+
+  function resize() {
+    width = Math.max(1, container.clientWidth);
+    height = Math.max(1, container.clientHeight);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setSize(width, height, false);
+  }
+
+  const observer = new ResizeObserver(resize);
+  observer.observe(container);
+  resize();
+  const start = performance.now();
+
+  function render(now: number) {
+    const moving = !reducedMotion.matches;
+    const time = moving ? (now - start) / 1000 : 0;
+    const compact = width < 760;
+    const distance = Math.max(.92, (compact ? 1.09 : .94) / camera.aspect);
+    const arrivalBlend = renderArrival(now);
+    renderAction(now);
+    const focus = models.find(({ building }) => building.id === selected);
+    aim.set(
+      focus && !compact ? focus.group.position.x * .12 : 0,
+      compact ? .9 : 1.2,
+      (1 - arrivalBlend) * 4.7,
+    );
+    look.lerp(aim, moving ? .075 : 1);
+    camera.position.set(
+      look.x + (compact ? 1.1 : 2.5) * distance + Math.sin(time * .45) * .24,
+      THREE.MathUtils.lerp(11, 20, arrivalBlend) * distance + (moving ? Math.exp(-time * 2) * 2.6 : 0),
+      look.z + THREE.MathUtils.lerp(19, 28, arrivalBlend) * distance,
+    );
+    camera.lookAt(look);
+    camera.updateMatrixWorld();
+
+    for (const { building, group, ring, beacon, grow, dishPivot, markerHeight } of models) {
+      ring.visible = selected === building.id || hovered === building.id;
+      if (building.id === 'control') {
+        beacon.color.set(alert ? beaconColors[phase] : 0x90d8f0);
+        beacon.emissive.copy(beacon.color);
+        beacon.emissiveIntensity = !alert ? .55 : 1.23 + .37 * Math.sin(time * (phase === 'peak' ? 4 : 2.4));
+        if (committed?.crew === 'shelter') ring.visible = true;
+      } else beacon.emissiveIntensity = .54 + .19 * Math.sin(time * 2.1);
+      grow.emissiveIntensity += (growLevel - grow.emissiveIntensity) * (moving ? .11 : 1);
+      dishPivot.rotation.y = Math.sin(time * .37) * .74 + .35;
+      anchor.copy(group.position);
+      anchor.y += markerHeight;
+      anchor.project(camera);
+      markers[building.id].style.setProperty('--marker-x', `${(anchor.x * .5 + .5) * 100}%`);
+      markers[building.id].style.top = `${(.5 - anchor.y * .5) * 100}%`;
+    }
+
+    renderer.render(scene, camera);
+    resolveReady();
+    frame = requestAnimationFrame(render);
+  }
+
+  canvas.addEventListener('webglcontextlost', (event) => {
+    event.preventDefault();
+    cancelAnimationFrame(frame);
+    observer.disconnect();
+    canvas.remove();
+    fallback = mountStaticMap(container, markers);
+    fallback.select(selected);
+    if (committed) fallback.present({ type: 'settled', state: committed });
+    if (alert) fallback.present({ type: 'warning' });
+    resolveReady();
+  }, { once: true });
+
+  frame = requestAnimationFrame(render);
+  return {
+    ready,
+    select(id?: BuildingId) {
+      selected = id;
+      fallback?.select(id);
+    },
+    present,
+  };
+}
+
+function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTMLButtonElement>) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 960;
+  canvas.height = 600;
+  container.classList.add('static-map');
+  container.append(canvas);
+  const context = canvas.getContext('2d');
+  const sites = { farm: [257, 344], control: [480, 230], comms: [703, 344] };
+  for (const building of buildings) {
+    const [x, y] = sites[building.id];
+    markers[building.id].style.setProperty('--marker-x', `${x / 9.6}%`);
+    markers[building.id].style.top = `${(y - 39) / 6}%`;
+  }
+  let selected: BuildingId | undefined;
+  let phase: Phase = 'warning';
+  let alert = false;
+  let state: MissionState | undefined;
+  function paint() {
+    if (!context) return;
+    const gradient = context.createLinearGradient(0, 0, 0, 600);
+    gradient.addColorStop(0, '#302f39');
+    gradient.addColorStop(1, '#65605a');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 960, 600);
+    for (const [x, y, radius] of [[110, 125, 72], [790, 140, 78], [460, 490, 112], [137, 474, 54], [844, 464, 57]]) {
+      context.beginPath();
+      context.ellipse(x, y, radius, radius * .57, 0, 0, Math.PI * 2);
+      context.fillStyle = '#33313a';
+      context.fill();
+      context.strokeStyle = '#81796e';
+      context.lineWidth = 3;
+      context.stroke();
+    }
+    context.beginPath();
+    context.moveTo(...sites.farm as [number, number]);
+    context.lineTo(...sites.control as [number, number]);
+    context.lineTo(...sites.comms as [number, number]);
+    context.lineWidth = 11;
+    context.strokeStyle = '#81786d';
+    context.stroke();
+    for (const building of buildings) {
+      const [x, y] = sites[building.id];
+      context.fillStyle = '#292c31';
+      context.fillRect(x - 49, y - 13, 98, 49);
+      const color = building.id === 'control' && alert ? beaconColors[phase]
+        : building.id === 'farm' && state?.lights === 'off' ? 0x6e7959 : building.color;
+      context.fillStyle = `#${color.toString(16)}`;
+      context.fillRect(x - 41, y - 7, 82, 25);
+      if (building.id === selected) {
+        context.lineWidth = 3;
+        context.strokeStyle = context.fillStyle;
+        context.strokeRect(x - 55, y - 19, 110, 61);
+      }
+    }
+  }
+  paint();
+  return {
+    ready: Promise.resolve(),
+    select(id?: BuildingId) { selected = id; paint(); },
+    present(event: MissionEvent) {
+      if ('state' in event) { state = event.state; phase = state.phase; }
+      if (event.type === 'warning') alert = true;
+      paint();
+    },
+  };
+}

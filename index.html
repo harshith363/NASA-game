@@ -2,10 +2,173 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#07101e" />
-    <meta name="description" content="A cinematic investigation aboard Odyssey. Restore the stories of Apollo 11 and Opportunity using real NASA evidence." />
-    <title>ECHOES — The Last Archive</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17171e" />
+    <title>Lunar Outpost · Solar Storm Warning</title>
   </head>
-  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+  <body>
+    <main class="outpost">
+      <section class="map" aria-label="Lunar outpost map">
+        <div id="outpost-canvas" aria-hidden="true"></div>
+        <div id="building-controls" class="building-controls" inert></div>
+      </section>
+      <div id="mission-workspace" inert>
+        <header class="flight-hud">
+          <div class="mission-status">
+            <p class="eyebrow"><span class="status-light"></span> Lunar outpost</p>
+            <h1>Solar Storm Warning</h1>
+            <p id="shift-title"></p>
+          </div>
+          <section class="telemetry" aria-label="Outpost resources">
+            <div data-resource="battery"><label for="battery">Battery</label><span id="battery-value"></span><div class="bar"><meter id="battery" max="11"></meter><span id="battery-fill" aria-hidden="true"></span></div></div>
+            <div data-resource="air"><label for="air">Air reserve</label><span id="air-value"></span><div class="bar"><meter id="air" max="3"></meter><span id="air-fill" aria-hidden="true"></span></div></div>
+            <div data-resource="harvest"><label for="harvest">Tomorrow’s harvest</label><span id="harvest-value"></span><div class="bar"><meter id="harvest" max="4"></meter><span id="harvest-fill" aria-hidden="true"></span></div></div>
+          </section>
+          <div class="hud-tools">
+            <button id="mute" class="radio-action" type="button" aria-pressed="true">Mute</button>
+            <details class="sound-settings">
+              <summary>Sound settings</summary>
+              <div class="console sound-sliders">
+                <label for="music-volume">Music volume</label>
+                <input id="music-volume" type="range" min="0" max="100" value="30" />
+                <label for="effects-volume">Effects volume</label>
+                <input id="effects-volume" type="range" min="0" max="100" value="35" />
+                <p id="sound-status" role="status"></p>
+              </div>
+            </details>
+            <button id="fullscreen" class="icon-button fullscreen" type="button" aria-label="Fullscreen" title="Enter fullscreen" aria-pressed="false" hidden>⛶</button>
+          </div>
+        </header>
+
+        <div class="mission-deck">
+          <section class="signals" aria-label="Mission updates">
+            <div class="signal-card console">
+              <p class="eyebrow">Mission objectives</p>
+              <p>Shelter the crew with air through both shifts. Prepare <strong id="harvest-target"></strong> harvest points for tomorrow’s fresh food.</p>
+              <p id="forecast-notice" role="status"></p>
+            </div>
+            <section id="shift-report" class="report console" aria-labelledby="report-title" hidden>
+              <h2 id="report-title" tabindex="-1"></h2>
+              <p id="report-line"></p>
+              <details id="report-details">
+                <summary>Resource breakdown</summary>
+                <ul id="report-items"></ul>
+              </details>
+            </section>
+          </section>
+
+          <form id="shift-form" class="shift-form">
+            <section class="workbench console" aria-label="Mission controls">
+              <nav id="facility-tabs" class="facility-tabs" aria-label="Outpost facilities"></nav>
+              <section id="facility" class="facility" aria-labelledby="building-name" hidden>
+                <button id="close-facility" class="icon-button close" type="button" aria-label="Close building controls">×</button>
+                <h2 id="building-name" tabindex="-1"></h2>
+                <p id="building-description"></p>
+                <div id="control-panel" class="facility-panel" hidden>
+                  <section class="situation" aria-label="Simulated storm telemetry">
+                    <h3 id="tower-phase"></h3>
+                    <p id="tower-crew"></p>
+                    <p id="tower-power"></p>
+                    <p id="forecast-detail"></p>
+                  </section>
+                  <p id="tower-note"></p>
+                  <label for="location">Crew location</label>
+                  <select id="location" name="location">
+                    <option value="shelter">Storm shelter (+1 power)</option>
+                    <option value="standard">Standard room (+0 power)</option>
+                  </select>
+                  <p>The storm shelter uses extra power to circulate air.</p>
+                  <label for="air-mode">Air system</label>
+                  <select id="air-mode" name="airMode">
+                    <option value="normal">Normal (2 power)</option>
+                    <option value="reserve">Use reserve (1 power, uses 2 air)</option>
+                  </select>
+                  <p id="phase-demand"></p>
+                  <button id="ask-help" class="radio-action" type="button">Ask for a hint</button>
+                  <p id="help-text" role="status"></p>
+                </div>
+                <div id="farm-panel" class="facility-panel" hidden>
+                  <h3>Tomorrow’s harvest</h3>
+                  <p id="crop-outlook"></p>
+                  <label for="lights">Grow lights</label>
+                  <select id="lights" name="lights">
+                    <option value="off">Off (0 power, +0 harvest)</option>
+                    <option value="dim">Dim (1 power, +1 harvest)</option>
+                    <option value="full">Full (3 power, +2 harvest)</option>
+                  </select>
+                </div>
+                <div id="comms-panel" class="facility-panel" hidden>
+                  <h3>Forecast from Earth</h3>
+                  <p>In this drill, Mission Control models the next phase from simulated particle readings. The reply includes how long the peak lasts and what the air system needs.</p>
+                  <div class="radio-forecast">
+                    <button id="request-forecast" class="radio-action" type="button">Request forecast</button>
+                    <p>About 1.3 seconds each way by radio, plus time for Mission Control to check the forecast.</p>
+                    <p id="forecast-status" role="status"></p>
+                  </div>
+                  <details class="radio-archive">
+                    <summary>Historical NASA sources</summary>
+                    <p>NASA’s <span id="solar-observer"></span> spacecraft detected fast-moving particles from the Sun on <time id="solar-observed-at"></time>. That past event inspired this drill.</p>
+                    <a id="solar-source" target="_blank" rel="noopener">NASA event record</a>
+                    <a href="https://science.nasa.gov/science-research/heliophysics/how-nasa-will-protect-astronauts-from-space-radiation-at-the-moon/" target="_blank" rel="noopener">NASA: Space radiation and shielding</a>
+                  </details>
+                </div>
+              </section>
+              <section class="command" aria-label="Shift plan">
+                <div class="shift-preview" aria-live="polite" aria-atomic="true">
+                  <p id="plan-summary"></p>
+                  <p id="plan-preview"></p>
+                  <p id="plan-warning" class="warning" hidden></p>
+                </div>
+                <button id="commit-shift" class="action" type="submit"></button>
+              </section>
+            </section>
+          </form>
+          <section id="resolution" class="console resolution" aria-labelledby="resolution-title" hidden>
+            <p id="resolution-phase" class="eyebrow"></p>
+            <h2 id="resolution-title" tabindex="-1"></h2>
+            <svg id="risk-trace" viewBox="0 0 240 30" aria-hidden="true"><path d="M1 25h25l12-4 12 4h22l10-7 8 2 15-8 12 4 8-7 13 2 16-7 11 5 10-4 10 4 15-5h39" pathLength="1"/></svg>
+            <p id="resolution-readout"></p>
+            <p id="resolution-caption" role="status"></p>
+            <div class="resolution-actions">
+              <button id="skip-resolution" class="radio-action" type="button">Skip animation</button>
+              <button id="restart-resolution" class="radio-action" type="button">Restart drill</button>
+            </div>
+          </section>
+        </div>
+
+        <section id="debrief" class="debrief console" aria-labelledby="outcome" hidden>
+          <p class="eyebrow">Mission debrief</p>
+          <h2 id="outcome" tabindex="-1"></h2>
+          <p id="outcome-detail"></p>
+          <p id="outcome-resources"></p>
+          <details class="debrief-science">
+            <summary>The science behind the drill</summary>
+            <p>Thicker walls can reduce exposure to solar particles. Space-grown crops can supplement stored food. The shift lengths, resource units, and harvest points here are fictional.</p>
+            <a href="https://www.nasa.gov/exploration-research-and-technology/growing-plants-in-space/" target="_blank" rel="noopener">NASA: Growing Plants in Space</a>
+          </details>
+          <label for="scenario">Next scenario</label>
+          <select id="scenario">
+            <option value="standard">First storm</option>
+            <option value="lowPower">Low battery challenge (10 power)</option>
+          </select>
+          <button id="retry" class="action" type="button">Retry mission</button>
+        </section>
+      </div>
+    </main>
+    <section id="flight-intro" class="flight-intro" data-stage="launch" aria-labelledby="intro-title">
+      <button id="intro-skip" class="intro-skip radio-action" type="button" hidden>Skip intro</button>
+      <div class="intro-overlay">
+        <p class="eyebrow">Junior Astronaut Mission Trainer</p>
+        <h2 id="intro-title">Lunar outpost</h2>
+        <div class="intro-dialogue console">
+          <p id="intro-line" role="status">Ready for touchdown? Guide the crew through a solar storm.</p>
+          <div id="intro-actions" class="intro-actions">
+            <button id="start-sound" class="action" type="button">Start with sound</button>
+            <button id="start-muted" class="radio-action" type="button">Play muted</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
