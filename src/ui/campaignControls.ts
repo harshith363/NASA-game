@@ -17,6 +17,12 @@ import {
 } from '../mission/outpostSimulation';
 
 type FacilityTarget = 'farm' | 'control' | 'comms' | number;
+const driveKeys = {
+  forward: ['ArrowUp', 'KeyW'],
+  reverse: ['ArrowDown', 'KeyS'],
+  left: ['ArrowLeft', 'KeyA'],
+  right: ['ArrowRight', 'KeyD'],
+} as const;
 
 export function mountCampaignControls(
   host: HTMLElement,
@@ -69,7 +75,7 @@ export function mountCampaignControls(
         <div class="drive-pad" aria-label="Rover steering">
           <button data-drive="left" aria-label="Steer left">◀</button><button data-drive="forward" aria-label="Drive forward">▲</button><button data-drive="right" aria-label="Steer right">▶</button><button data-drive="reverse" aria-label="Reverse">▼</button>
         </div>
-        <p>Hold WASD, arrow keys, or the steering buttons while the clock runs at 1×.</p>
+        <p>W or ↑ drives forward. S or ↓ reverses. A or ← steers left. D or → steers right.</p>
         <button class="radio-action" data-campaign-close>Park &amp; return to base view</button>
         <p>Parking restores fast-forward. The driver stays with the rover until you dock.</p>
         <div class="campaign-actions">
@@ -184,11 +190,11 @@ export function mountCampaignControls(
 
   document.addEventListener('keydown', event => {
     if (document.querySelector('dialog[open]') || open !== 'rover' || !state().campaign.rover.driver || (event.target as HTMLElement).matches('select, input, textarea') || event.altKey || event.metaKey || event.ctrlKey) return;
-    const driveKeys: Record<string, string> = { ArrowUp:'forward', KeyW:'forward', ArrowDown:'reverse', KeyS:'reverse', ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right' };
-    if (!driveKeys[event.code]) return;
+    const direction = Object.entries(driveKeys).find(([, codes]) => codes.some(code => code === event.code))?.[0];
+    if (!direction) return;
     event.preventDefault();
     keys.add(event.code);
-    if (!event.repeat) queuedDrive.set(driveKeys[event.code], performance.now() + 115);
+    if (!event.repeat) queuedDrive.set(direction, performance.now() + 115);
   });
   document.addEventListener('keyup', event => keys.delete(event.code));
   window.addEventListener('blur', clearInput);
@@ -448,7 +454,7 @@ export function mountCampaignControls(
     const destination = points[waypoint] ?? locations.dock;
     const angle = Math.atan2(destination[0]-x,destination[1]-z)-rover.heading;
     const bearing = Math.atan2(Math.sin(angle),Math.cos(angle));
-    const direction = Math.abs(bearing) < .23 ? 'straight ahead' : bearing > 0 ? 'turn right' : 'turn left';
+    const direction = Math.abs(bearing) < .23 ? 'straight ahead' : bearing > 0 ? 'turn left' : 'turn right';
     const distance = Math.hypot(destination[0]-x,destination[1]-z);
     const home = estimateDriveCost(rover.position, locations.dock);
     const terrain = tractionAt(x,z) < .79 ? 'rough ground' : 'firm ground';
@@ -515,10 +521,11 @@ export function mountCampaignControls(
     get driving() { return open === 'rover' && !!state().campaign.rover.driver; },
     driveInput(): DriveInput {
       if (open !== 'rover') return { throttle: 0, turn: 0 };
-      const down = (direction: string, ...codes: string[]) => Number((queuedDrive.get(direction) ?? 0) > performance.now() || pointerKeys.has(direction) || codes.some(code => keys.has(code)));
+      const down = (direction: keyof typeof driveKeys) => Number((queuedDrive.get(direction) ?? 0) > performance.now() || pointerKeys.has(direction) || driveKeys[direction].some(code => keys.has(code)));
       const input = {
-        throttle: down('forward','ArrowUp','KeyW') - down('reverse','ArrowDown','KeyS'),
-        turn: down('right','ArrowRight','KeyD') - down('left','ArrowLeft','KeyA'),
+        throttle: down('forward') - down('reverse'),
+        // Positive yaw turns left when viewed from behind the rover.
+        turn: down('left') - down('right'),
       };
       return input;
     },

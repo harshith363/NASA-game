@@ -33,7 +33,7 @@ The Communications Centre shows an animated response when a forecast is requeste
 ## Drive and use radar
 
 1. Select **Rover dock** on the map, choose an available driver, and board. Press **Play** if paused.
-2. Use **WASD**, arrow keys, or the on-screen steering buttons. Driving view runs at 1×. Select **Park & return to base view** to use fast-forward while the rover remains deployed. The driver stays aboard until docking.
+2. Use **W / ↑** to drive forward, **S / ↓** to reverse, **A / ←** to steer left, and **D / →** to steer right. The on-screen controls use the same directions. Driving view runs at 1×. Select **Park & return to base view** to use fast-forward while the rover remains deployed. The driver stays aboard until docking.
 3. Use the Communications survey or **Radar sweep** to reveal caches. A sweep costs 0.6 charge, reaches 27 grid units, and recharges in four seconds of play at 1×. Discovered sites appear as waypoints. The cargo hold fits 60 materials, and the rover holds 30 charge.
 4. Stop near a revealed cache and collect it once. When you return to the pad, explicitly select **Dock & unload** to release the driver and deposit cargo. Use **Charge from base** to transfer power while keeping at least 5 power at the base.
 5. Visit the Apollo 12 and Surveyor 3 overlook to unlock the history exhibit. If stranded, **Request tow** spends 5 materials and takes one-third of a mission day while the clock runs.
