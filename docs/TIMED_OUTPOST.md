@@ -12,7 +12,7 @@ The standard outpost starts with 25 power, 18 food, 20 water, 20 oxygen, and 100
 | Battery bank | 20 | 0.42 days | Adds 20 units of empty battery capacity. |
 | Greenhouse | 35 | 0.83 days | Produces 3 food per day with lights, power, and water. Running lights and irrigation use 2 power and 0.5 water per day. |
 
-Use **Build** to select one of six plots. Two available astronauts walk to the current plot before work begins. Construction proceeds in queue order and pauses during recall or a storm. Select a completed building to switch it on or off.
+Use **Build** in the lower Mission Control panel to select one of six plots. The settings and fullscreen controls sit beside the mission clock. Two available astronauts walk to the current plot before work begins. Construction proceeds in queue order and pauses during recall or a storm. Select a completed building to switch it on or off.
 
 ## Assign jobs and shelter the crew
 

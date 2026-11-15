@@ -696,6 +696,7 @@ button { cursor: pointer; }
 .timed-outpost { display: flex; flex-direction: column; gap: 12px; min-height: calc(100dvh - 2 * var(--edge)); pointer-events: none; }
 .timed-outpost .console { pointer-events: auto; padding: 16px; border-radius: 12px; }
 .sim-topline { position: sticky; top: var(--edge); z-index: 3; display: grid; grid-template-columns: minmax(125px, 1fr) minmax(245px, 2fr) auto auto; align-items: center; gap: 14px; }
+.sim-topline:has(.utility-settings[open]) { z-index: 6; }
 .sim-brand { text-shadow: 0 2px 8px #000; }
 .sim-brand h1 { font-size: clamp(1rem, 2vw, 1.3rem); }
 .sim-brand p { margin: 4px 0 0; font-size: .85rem; }
@@ -712,7 +713,7 @@ button { cursor: pointer; }
 .sim-resources small { font-size: .72rem; }
 .sim-resources [data-change=loss] { color: #ff7878; }
 .sim-resources [data-change=gain] { color: #93e9ab; }
-#sim-build-toggle { pointer-events: auto; background: #141b26ed; }
+#sim-build-toggle { display: block; margin-top: 10px; min-height: 44px; pointer-events: auto; background: #141b26ed; }
 #sim-build-toggle[aria-expanded=true] { border-color: #ffc580; color: #ffc580; }
 .surface-marker { --facility-color: #ffc580; top: 60%; }
 .surface-marker[data-surface="departure"] { transform: translate(calc(-100% - 4px), -100%); left: clamp(102px, var(--marker-x, 50%), calc(100% - 10px)); }
@@ -730,8 +731,6 @@ button { cursor: pointer; }
 .sim-facility-panel header, .sim-build header { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: sticky; top: -20px; padding-block: 8px; background: #151c27; z-index: 1; }
 .sim-facility-panel :is(.action, .icon-button), .sim-build :is(.sim-plot, .icon-button) { min-height: 44px; }
 .sim-facility-panel .icon-button, .sim-build .icon-button { min-width: 44px; }
-.sim-utilities { margin-top: 10px; }
-.sim-utilities .utility-menu { inset: auto auto calc(100% + 10px) 0; }
 .sim-facility-panel label { display: flex; align-items: center; gap: 10px; padding-block: 10px; cursor: pointer; }
 .sim-facility-panel input { width: 20px; height: 20px; accent-color: #ffc580; }
 .sim-facility-panel [data-panel] { border-top: 1px solid #ffffff20; padding-top: 8px; }
@@ -749,6 +748,10 @@ button { cursor: pointer; }
   .timed-outpost :is(.sim-facility-panel, .sim-build) { max-height: 58dvh; padding: 16px; width: calc(100vw - 2 * var(--edge)); }
   .sim-facility-panel header, .sim-build header { top: -16px; }
   .flight-utilities { grid-area: 1 / 2; }
+}
+@media (max-width: 360px) {
+  .sim-clock.console { gap: 4px; padding-inline: 6px; }
+  .sim-clock strong { min-width: 0; font-size: .9rem; }
 }
 
 /* Individual crew, rover operations, and the return console. */

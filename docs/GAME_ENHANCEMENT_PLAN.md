@@ -5,6 +5,7 @@ All seven priorities are implemented. The original requirements and acceptance c
 ## Implementation notes
 
 - The first window opens on Day 13.00 and closes on Day 16.00. Later windows follow the same pattern every 15 mission days.
+- The outpost header places the settings pill beside the clock. **Build** sits in the lower Mission Control panel.
 - Mission Control displays live locations, assignments, and job cooldowns. The map's **Rover dock** and **Departure** markers open their respective panels.
 - New runs save two storm timings and one incident draw. An array repair reserves 12 materials on the first assignment. Canceling resets the work, and the reserved parts stay available for reassignment. Dust cleaning spends 3 power when committed. Earlier saves retain their original storm schedule.
 - The seven supply caches count toward the original 150-material score target. The three new geology sites have fictional specimens and locally stored, credited Apollo photographs.
