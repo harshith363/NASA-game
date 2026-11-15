@@ -2,6 +2,19 @@
 
 Select **Enter lunar outpost** after touchdown to open a fresh Day 1 for that flight. Choose **Go directly to outpost** from the menu to skip flight and use a separate save. The outpost starts and resumes paused. One mission day takes 60 real seconds at 1×. Cycle through **1×, 2×, and 4×** using the speed button. Switching tabs pauses the simulation. No time passes while the game is closed.
 
+## First run walkthrough
+
+Each arrival from the flight section asks if you want the outpost walkthrough. When you go directly to a fresh outpost, the guide opens on your first visit. It opens the Build, Farm, Control Tower, Communications Centre, Rover dock, and Departure panels and highlights the control being explained. Browse with **Next** and **Back**, or close the guide and reopen **Outpost walkthrough** in the lower Mission Control panel. The clock stays paused until you choose **Play**.
+
+1. Read power, food, water, oxygen, and materials in the HUD.
+2. Preview the solar array, greenhouse, and battery bank in **Build**. If you already built one, the tour opens that facility’s panel. To start a new build after the tour, select an empty plot and press **Play**.
+3. Open **Farm** to check crop lighting, water recycling, and the related jobs.
+4. Open **Control Tower** to see the crew roster and assign jobs. Try servicing the power equipment or inspecting the shelter for earlier warnings.
+5. Open **Communications Centre** to request a storm forecast or assign the radar survey job.
+6. Use the shelter controls in **Control Tower** when warned. Bring the rover back if it is out, give the crew time to reach shelter, and release them when the storm clears.
+7. Open **Rover dock** for a short rover trip in clear conditions. Scan, collect a nearby cache, and return to **Dock & unload**.
+8. Use the lander’s **Departure** checklist to get the crew and supplies ready. Open **Departure briefing** for a quick review before boarding.
+
 ## Establish the base
 
 The standard outpost starts with 25 power, 18 food, 20 water, 20 oxygen, and 100 materials. Battery starts with 30 units of capacity. The HUD shows inventory and net rates per day. A minus sign indicates a falling resource.

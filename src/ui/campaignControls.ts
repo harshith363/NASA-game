@@ -98,6 +98,7 @@ export function mountCampaignControls(
     </section>
     <section id="campaign-departure" class="console sim-facility-panel" hidden aria-labelledby="departure-title">
       <header><h2 id="departure-title" tabindex="-1">Return to Earth</h2><button class="icon-button" data-campaign-close aria-label="Close departure">×</button></header>
+      <button type="button" class="radio-action" id="departure-briefing" aria-haspopup="dialog">Departure briefing</button>
       <ul class="departure-checks">
         <li id="departure-time"></li><li id="departure-weather"></li>
         <li id="departure-rover"></li><li id="departure-shelter"></li><li id="departure-jobs"></li>
@@ -177,7 +178,7 @@ export function mountCampaignControls(
     q('#campaign-departure').hidden = true;
     updateMode();
   }
-  function show(panel: SurfacePanel, trigger?: HTMLElement) {
+  function show(panel: SurfacePanel, trigger?: HTMLElement, focus = true) {
     close();
     open = panel;
     panelTrigger = trigger ?? document.querySelector<HTMLElement>(`[data-surface="${panel}"]`) ?? undefined;
@@ -185,7 +186,7 @@ export function mountCampaignControls(
     q(`#campaign-${panel}`).hidden = false;
     updateMode();
     render();
-    q(panel === 'rover' ? '#rover-title' : '#departure-title').focus();
+    if (focus) q(panel === 'rover' ? '#rover-title' : '#departure-title').focus();
   }
 
   document.addEventListener('keydown', event => {

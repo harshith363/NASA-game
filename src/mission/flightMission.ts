@@ -60,7 +60,7 @@ export function canReachLanding(s: FlightState): boolean {
   return legalActions(s).some(action => canReachLanding(apply(s, action)));
 }
 export function previewFlight(s: FlightState, action: FlightAction) {
-  if (!legalActions(s).includes(action)) return { allowed: false as const, reason: 'Complete the current check or acknowledge the result first.' };
+  if (!legalActions(s).includes(action)) return { allowed: false as const, reason: 'Complete the current flight check first.' };
   const next = apply(s, action);
   if (!canReachLanding(next)) return { allowed: false as const, reason: 'This leaves too little for remaining maneuvers and breathing supply. Retry the checkpoint.' };
   return { allowed: true as const, next, reason: '' };

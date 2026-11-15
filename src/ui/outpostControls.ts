@@ -1,4 +1,6 @@
 import { mountLandmarkExhibit } from './landmarkExhibit';
+import { mountPlayerGuide } from './playerGuide';
+import { departureGuide, outpostGuide } from '../data/playerGuides';
 import { mountLunarIncidentBriefing } from './lunarIncidentBriefing';
 import { mountTimedStormBriefing } from './timedStormBriefing';
 import type { MotionPreference } from './motionPreference';
@@ -34,7 +36,7 @@ export function mountTimedOutpost(updateScene: (state: OutpostState, driving?: b
   const ui = document.createElement('section'); ui.className = 'timed-outpost';
   ui.innerHTML = `<header class="sim-topline"><div class="sim-brand"><h1>Lunar outpost</h1><p id="sim-phase"></p></div><section class="sim-resources console" aria-label="Live resources"></section><div class="sim-clock console" aria-label="Mission clock"><strong id="sim-time"></strong><button class="clock-play" id="sim-play" title="Play simulation" aria-label="Play simulation">▶</button><button id="sim-speed" class="clock-speed" title="Change speed" aria-label="Speed 1×. Click to cycle to 2×">1×</button></div><div class="sim-utilities"></div></header>
   <section id="sim-facility-panel" class="console sim-facility-panel" aria-labelledby="sim-facility-title" hidden><header><div><p class="eyebrow">Facility controls</p><h2 id="sim-facility-title" tabindex="-1"></h2></div><button class="icon-button" id="sim-close-facility" aria-label="Close facility">×</button></header><p id="sim-facility-detail"></p><div data-panel="farm"><label><input type="checkbox" id="sim-grow-lights"> Run greenhouse lights</label><p>Each active greenhouse produces 3 food/day and consumes 2 power and 0.5 water/day. Turning off lights suspends growth.</p><p id="sim-light-preview"></p><p id="sim-light-rates"></p><label><input type="checkbox" id="sim-recycler"> Run water recycler</label><p>Recycling uses 1 power/day and recovers 1.8 water/day before crew consumption.</p></div><div data-panel="control"><section id="sim-crew-roster"><h3>Crew roster</h3><p id="sim-crew-summary"></p></section><button id="sim-telemetry" class="radio-action">Request telemetry</button><button id="sim-incident-briefing" class="radio-action" aria-haspopup="dialog" hidden>Equipment alert</button><button id="sim-storm-briefing" class="radio-action" aria-haspopup="dialog" hidden>Storm briefing</button><button id="sim-panel-shelter" class="radio-action"></button><label><input type="checkbox" id="sim-reserve-air"> Use reserve oxygen</label><p>Reserve mode saves 1 power/day but consumes 3 oxygen/day. Normal life support replenishes oxygen while powered.</p></div><div data-panel="comms"><p>Track particle activity and survey for supplies.</p><button id="sim-comms-telemetry" class="radio-action">Request telemetry</button><button class="radio-action" id="sim-forecast">Request forecast</button><p id="sim-forecast-result" role="status"></p></div><div data-panel="expansion"><label><input type="checkbox" id="sim-facility-enabled"> Facility online</label><p id="sim-expansion-info"></p></div></section>
-  <div class="sim-bottom"><section class="console sim-operations"><p class="eyebrow">Mission control</p><p id="sim-event" role="status"></p><button id="sim-departure-checklist" class="radio-action" hidden>Open departure checklist</button><button id="sim-shelter" class="radio-action"></button><p id="sim-save" role="status"></p><details><summary>How to establish the outpost</summary><p>Build a solar array and greenhouse, then manage reserves through the storm. One construction team uses two of five astronauts; the other three maintain life support. Recall the crew before each storm. Use the Departure checklist to prepare the return ship. Board on Days 13–15 or during the last three days of a later 15-day cycle.</p><p>One mission day passes in 60 real seconds at 1×. Resource units and timing are fictional training values. Pausing also stops resource consumption and construction.</p></details><button id="sim-restart" class="radio-action">New outpost</button><button id="sim-loss-report" class="radio-action" hidden>Mission report</button><button id="sim-menu" class="radio-action">Chapter menu</button><button class="radio-action" id="sim-build-toggle" aria-expanded="false" aria-controls="sim-build-panel">Build</button></section>
+  <div class="sim-bottom"><section class="console sim-operations"><p class="eyebrow">Mission control</p><p id="sim-event" role="status"></p><button id="sim-departure-checklist" class="radio-action" hidden>Open departure checklist</button><button id="sim-shelter" class="radio-action"></button><p id="sim-save" role="status"></p><button type="button" id="sim-guide" class="radio-action" aria-haspopup="dialog">Outpost walkthrough</button><button id="sim-restart" class="radio-action">New outpost</button><button id="sim-loss-report" class="radio-action" hidden>Mission report</button><button id="sim-menu" class="radio-action">Chapter menu</button><button class="radio-action" id="sim-build-toggle" aria-expanded="false" aria-controls="sim-build-panel">Build</button></section>
   <section id="sim-build-panel" class="console sim-build" aria-labelledby="sim-build-title" hidden><header><h2 id="sim-build-title" tabindex="-1">Construction</h2><button class="icon-button" id="sim-build-close" aria-label="Close construction">×</button></header><label for="sim-type">Facility</label><select id="sim-type">${Object.entries(constructionTypes).map(([key, f]) => `<option value="${key}">${f.name} · ${f.cost} materials</option>`).join('')}</select><p id="sim-build-info"></p><p>Select an empty plot to queue construction.</p><div class="sim-plots"></div><p id="sim-build-error" role="status"></p></section></div>`;
   workspace.append(ui);
   const preferences = tools.querySelector<HTMLElement>('.sound-sliders')!;
@@ -67,10 +69,52 @@ export function mountTimedOutpost(updateScene: (state: OutpostState, driving?: b
     updateScene(state, driving);
     updateSpeed();
   }, openSurface, exhibits.show);
-  function openSurface(panel: SurfacePanel, trigger?: HTMLElement) {
+  const guideTrigger = q<HTMLButtonElement>('#sim-guide');
+  const departureBriefingTrigger = q<HTMLButtonElement>('#departure-briefing');
+  const buildType = q<HTMLSelectElement>('#sim-type');
+  let previousBuildType: string | undefined;
+  const guide = mountPlayerGuide(workspace, 'surface-player-guide', {
+    enter(content, index) {
+      if (content !== outpostGuide) return;
+      previousBuildType ??= buildType.value;
+      const { panel, facility } = outpostGuide.cards[index];
+      if (facility) {
+        const existing = state.facilities.find(item => item.type === facility);
+        if (existing) {
+          openFacility(existing.plot, guideTrigger, false);
+          return '#sim-expansion-info';
+        }
+        openBuild(false);
+        buildType.value = facility;
+        render();
+      } else if (panel === 'rover' || panel === 'departure') {
+        openSurface(panel, undefined, false);
+      } else if (panel) {
+        openFacility(panel, guideTrigger, false);
+      } else {
+        closePanels();
+      }
+    },
+    close(content) {
+      if (content !== outpostGuide) return;
+      closePanels();
+      if (previousBuildType !== undefined) buildType.value = previousBuildType;
+      previousBuildType = undefined;
+      render();
+    },
+  });
+  guideTrigger.onclick = () => {
+    setPaused(true);
+    guide.show(outpostGuide, guideTrigger);
+  };
+  departureBriefingTrigger.onclick = () => {
+    setPaused(true);
+    guide.show(departureGuide, departureBriefingTrigger);
+  };
+  function openSurface(panel: SurfacePanel, trigger?: HTMLElement, focus = true) {
     closeFacility(false);
     closeBuild();
-    campaign.show(panel, trigger);
+    campaign.show(panel, trigger, focus);
   }
   function updateSpeed() {
     const control = q<HTMLButtonElement>('#sim-speed');
@@ -110,24 +154,33 @@ export function mountTimedOutpost(updateScene: (state: OutpostState, driving?: b
     q('#sim-build-toggle').setAttribute('aria-expanded', 'false');
     if (restoreFocus) q('#sim-build-toggle').focus();
   }
+  function closePanels() {
+    campaign.close();
+    closeBuild();
+    closeFacility(false);
+  }
   q('#sim-build-close').onclick = () => closeBuild(true);
   q('#sim-build-panel').addEventListener('keydown', event => { if (event.key === 'Escape') closeBuild(true); });
-  q('#sim-build-toggle').onclick = () => {
-    if (!q('#sim-build-panel').hidden) { closeBuild(true); return; }
+  function openBuild(focus = true) {
     campaign.close();
     closeFacility(false);
     q('#sim-build-panel').hidden = false;
     q('#sim-build-toggle').setAttribute('aria-expanded', 'true');
-    q('#sim-build-title').focus();
+    if (focus) q('#sim-build-title').focus();
+  }
+  q('#sim-build-toggle').onclick = () => {
+    if (q('#sim-build-panel').hidden) openBuild();
+    else closeBuild(true);
   };
-  function openFacility(id: Building['id'] | number, trigger?: HTMLElement) {
+  function openFacility(id: Building['id'] | number, trigger?: HTMLElement, focus = true) {
     campaign.close();
     selected = id; panelTrigger = trigger ?? (document.activeElement as HTMLElement);
     selectBuilding(typeof id === 'string' ? id : undefined);
     closeBuild();
     q('#sim-facility-panel').hidden = false;
     ui.querySelectorAll<HTMLElement>('[data-panel]').forEach(panel => panel.hidden = panel.dataset.panel !== (typeof id === 'number' ? 'expansion' : id));
-    render(); q('#sim-facility-title').focus();
+    render();
+    if (focus) q('#sim-facility-title').focus();
   }
   for (const [selector, key] of [['#sim-grow-lights','growLights'], ['#sim-recycler','recycler'], ['#sim-reserve-air','reserveAir']] as const) {
     q<HTMLInputElement>(selector).onchange = () => {
@@ -313,5 +366,19 @@ export function mountTimedOutpost(updateScene: (state: OutpostState, driving?: b
     try { localStorage.setItem(lastLandedOutpostKey, saveKey); } catch { /* Direct resume can still find the flight's save. */ }
   }
   requestAnimationFrame(frame);
-  return { openSurface, openBuilding(building: Building, trigger: HTMLButtonElement) { openFacility(building.id, trigger); }, openExpansion(plot: number) { if (state.facilities.some(f => f.plot === plot)) openFacility(plot); } };
+  return {
+    openSurface,
+    showWelcomeGuide(fromFlight: boolean) {
+      if (fromFlight && state.outcome === 'active' && !state.campaign.flight) {
+        guide.show(outpostGuide, guideTrigger, {
+          title: 'Take the outpost walkthrough?',
+          description: 'Visit each facility and see how to build, manage supplies, and get the crew ready to return. The mission clock stays paused.',
+        });
+      } else if (!restored) {
+        guide.showOnce(outpostGuide, guideTrigger);
+      }
+    },
+    openBuilding(building: Building, trigger: HTMLButtonElement) { openFacility(building.id, trigger); },
+    openExpansion(plot: number) { if (state.facilities.some(f => f.plot === plot)) openFacility(plot); },
+  };
 }

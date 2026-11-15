@@ -12,7 +12,7 @@ const motion = mountMotionPreference();
 const audio = mountMissionAudio();
 let mission: ReturnType<typeof mountTimedOutpost> | undefined;
 let entered = false;
-mountFlightIntro(audio, motion, async (saveKey, arrival) => {
+mountFlightIntro(audio, motion, async (saveKey, arrival, fromFlight) => {
   if (entered) return;
   entered = true;
   const navigation = mountBuildingControls(
@@ -26,6 +26,7 @@ mountFlightIntro(audio, motion, async (saveKey, arrival) => {
   await outpost.ready;
   document.querySelector<HTMLElement>('#mission-workspace')!.inert = false;
   if (arrival) present({ type: 'arrival' });
+  mission.showWelcomeGuide(fromFlight);
 });
 
 const fullscreen = document.querySelector<HTMLButtonElement>('#fullscreen')!;

@@ -890,3 +890,24 @@ button { cursor: pointer; }
 .flight-command .command-block-reason { padding: 0 8px 8px; margin: 0; font-size: .85rem; }
 .flight-command small, .flight-charges { font-size: .76rem; }
 .rover-map .geology-pin { color: #d6c1ff; font-size: .93rem; }
+
+.player-guide header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.player-guide .icon-button { flex: none; width: 44px; min-height: 44px; }
+.player-guide [data-guide-progress] { color: var(--muted); margin: 10px 0 6px; font-size: .85rem; }
+.player-guide [data-guide-offer] { margin: 12px 0 0; line-height: 1.5; }
+.player-guide h3 { margin: 0; font-size: 1.15rem; }
+.player-guide ol { margin: 12px 0 0; padding-inline-start: 1.4em; line-height: 1.5; }
+.player-guide li + li { margin-top: 8px; }
+.player-guide li::marker { color: #ffca90; }
+.player-guide footer button { min-height: 44px; }
+.launch-guide-trigger { margin-bottom: 10px; }
+.player-guide-anchored {
+  position: fixed;
+  inset: var(--guide-top, 12px) auto auto var(--guide-left, 12px);
+  margin: 0;
+  width: var(--guide-width, min(400px, calc(100vw - 24px)));
+  max-height: var(--guide-height, calc(100dvh - 24px));
+  padding: 16px;
+}
+.player-guide-anchored::backdrop { background: #050a1326; }
+.guide-highlight { outline: 3px solid #ffd193; outline-offset: 4px; box-shadow: 0 0 18px 5px #ffc07473; }

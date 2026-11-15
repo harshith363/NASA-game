@@ -1,4 +1,6 @@
 import { mountUtilityPill } from './utilityPill';
+import { mountPlayerGuide } from './playerGuide';
+import { launchGuide } from '../data/playerGuides';
 import { cabinEvidence, artemisEvidence } from './flightEvidence';
 import { commandHelp, commandPrerequisites, countdownHelp, labels, phaseCopy, phases, type FlightAction } from '../data/flightScenario';
 import { flightReferences } from '../data/flightReferences';
@@ -76,7 +78,7 @@ const instruments = {
 export function mountFlightControls(host: HTMLElement, initial: FlightState, motion: MotionPreference, audio: { flightCue: (cue: FlightCue) => void; pause: (paused: boolean) => void }, finish: (state: FlightState, unsaved: boolean) => Promise<void>, initialStored: string | null) {
   host.classList.add('flight-active');
   function dismissHelp(event: KeyboardEvent) {
-    if (event.key !== 'Escape') return;
+    if (event.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     const opened = host.querySelectorAll('.flight-command:has(.command-help-trigger[aria-expanded="true"])');
     if (!opened.length) return;
     opened.forEach(row => row.dispatchEvent(new Event('dismiss-command-help')));
@@ -106,6 +108,7 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
           <div class="flight-exercise"></div>
         </div>
         <p class="flight-countdown"></p><p class="flight-reserve"></p>
+        <button class="radio-action launch-guide-trigger" type="button" data-launch-guide aria-haspopup="dialog">Launch briefing</button>
         <div class="flight-actions" role="group" aria-label="Mission commands"></div>
         <div class="flight-secondary"></div>
         <details class="flight-science"><summary>Science and simulation</summary><p>Telemetry is illustrative and time is compressed. Fuel, battery and breathing supply are measured in training units. Commands spend resources only when committed.</p></details>
@@ -128,6 +131,9 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
       </div>
     </div>`;
   const q = <T extends HTMLElement = HTMLElement>(selector: string) => host.querySelector<T>(selector)!;
+  const briefing = mountPlayerGuide(host, 'flight-player-guide');
+  const briefingTrigger = q<HTMLButtonElement>('[data-launch-guide]');
+  briefingTrigger.onclick = () => briefing.show(launchGuide, briefingTrigger);
   const scene = mountFlightScene(q('.flight-scene'));
   const updateRoute = mountFlightRoute(q('.flight-route'), q('.flight-telemetry'));
   q('.flight-artemis').innerHTML = artemisEvidence();
@@ -149,7 +155,8 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
   mountUtilityPill(host.querySelector<HTMLElement>('.flight-utilities')!, preferences);
   let paused = document.hidden;
   let stale = false, unsaved = false, busy = false;
-  let notice = '', feedback = '';
+  let notice = '';
+  let feedback = initial.pendingReport ?? (initial.actionJournal.at(-1)?.action === 'acknowledge' ? initial.reports.at(-1)?.text ?? '' : '');
   let exercise: keyof typeof instruments | 'checklist' | undefined;
   let elapsed = 0, previous = 0, telemetryAt = -1, frame = 0;
 
@@ -183,18 +190,20 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
     return true;
   }
 
+  function settleReadback(next: FlightState) {
+    if (!next.pendingReport) return next;
+    // Keep the acknowledgment entry for replaying existing flight journals.
+    const index = next.actionJournal.length;
+    return commitFlight(next, { id: `${next.runId}/${index}/acknowledge`, action: 'acknowledge' })!;
+  }
+
   function act(action: FlightAction, expected = state.actionJournal.length) {
     if (paused || stale || busy || expected !== state.actionJournal.length) return;
-    let next = commitFlight(state, { id: `${state.runId}/${expected}/${action}`, action });
+    const next = commitFlight(state, { id: `${state.runId}/${expected}/${action}`, action });
     if (!next) return;
-    const report = next.pendingReport;
-    // Routine switch readbacks stay in the radio and journal without a separate confirmation click.
-    if (report && !decisionActions.has(action)) {
-      next = commitFlight(next, { id: `${state.runId}/${expected + 1}/acknowledge`, action: 'acknowledge' })!;
-    }
-    if (!persist(next)) { render(); return; }
+    if (!persist(settleReadback(next))) { render(); return; }
     if (action === 'authorize') elapsed = 0;
-    feedback = report && !next.pendingReport ? report : '';
+    feedback = next.pendingReport ?? '';
     if (!unsaved) notice = '';
     exercise = undefined;
     const cues: Partial<Record<FlightAction, FlightCue>> = {
@@ -233,7 +242,7 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
     frame = requestAnimationFrame(tick);
     const seconds = previous ? (now - previous) / 1000 : 0;
     previous = now;
-    const running = !paused && !busy && !stale && !document.hidden;
+    const running = !paused && !briefing.open && !busy && !stale && !document.hidden;
     if (running) elapsed += Math.min(seconds, .1);
     const beat = flightBeats[state.phase];
     const countdown = state.phase === 'countdown' && state.startupSystems.includes('authorize');
@@ -296,12 +305,13 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
     const [title, speaker, line] = phaseCopy[state.phase];
     const phaseIndex = phases.indexOf(state.phase);
     const stage = phaseIndex <= phases.indexOf('ascent') ? 0 : phaseIndex < phases.indexOf('lunarOrbit') ? 1 : 2;
+    briefingTrigger.hidden = stage !== 0;
     const blocked = paused || stale || busy;
     q('h2').textContent = title;
     q('[data-camera-status]').textContent = paused ? 'HOLD' : sections[stage].label.toUpperCase();
     q('.flight-caption').textContent = paused && state.phase !== 'debrief' && state.phase !== 'outpost' ? 'Flight paused. Resume when ready.' : state.pendingReport ?? (feedback || line);
     q('.flight-notice').textContent = notice;
-    q('.flight-radio strong').textContent = state.pendingReport || feedback ? 'SYSTEM READBACK' : `${speaker} / CREW RADIO`;
+    q('.flight-radio strong').textContent = state.pendingReport || feedback ? 'Mission update' : `${speaker} / CREW RADIO`;
     const portrait = q<HTMLImageElement>('.flight-radio img');
     portrait.hidden = ['Tower', 'Pilot'].includes(speaker);
     if (!portrait.hidden) portrait.src = `/media/crew-${speaker.toLowerCase()}.webp`;
@@ -357,9 +367,8 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
       const missing = (commandPrerequisites[action] ?? []).filter(item => !state.startupSystems.includes(item));
       status.textContent = done ? '✓ Done' : alternative ? 'Unused' : exercise === action ? 'Options open'
         : preview?.allowed && !blocked && !exercise ? 'Ready' : preview && !preview.allowed ? 'Reserve lock'
-          : state.pendingReport ? 'Acknowledge the current result'
-            : missing.length ? `First complete “${labels[missing[0]]}”` : exercise ? 'Finish the open exercise'
-              : action === 'capture' ? 'First finish the Moon approach' : 'Available at the next flight check';
+          : missing.length ? `First complete “${labels[missing[0]]}”` : exercise ? 'Finish the open exercise'
+            : action === 'capture' ? 'First finish the Moon approach' : 'Available at the next flight check';
       row.dataset.command = done ? 'done' : preview?.allowed ? 'ready' : 'locked';
       row.append(control, status);
       if (preview?.allowed) {
@@ -388,7 +397,6 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
     renderExercise(blocked);
     const secondary = q('.flight-secondary');
     secondary.replaceChildren();
-    if (legal.includes('acknowledge')) secondary.append(makeButton('Acknowledge result', () => act('acknowledge', sequence), blocked));
     const beat = flightBeats[state.phase];
     if (beat) secondary.append(makeButton(motion.reduced ? 'Continue' : 'Skip animation', () => act(beat.next, sequence), blocked));
     if (state.phase === 'countdown' && state.startupSystems.includes('authorize')) {
@@ -437,7 +445,9 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
   document.addEventListener('visibilitychange', visibility);
   window.addEventListener('storage', storage);
   motion.changes.addEventListener('change', motionChanged);
+  if (state.pendingReport) persist(settleReadback(state));
   if (paused) audio.pause(true);
   render();
+  if (initial.phase === 'briefing') briefing.showOnce(launchGuide, briefingTrigger);
   frame = requestAnimationFrame(tick);
 }

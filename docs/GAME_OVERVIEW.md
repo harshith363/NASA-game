@@ -10,15 +10,15 @@ From the chapter menu, start or resume the **Earth-to-Moon flight**, or select *
 
 ### Earth-to-Moon flight
 
-The flight begins on the launchpad. Connect ground power, start avionics and life support, load and confirm the approved navigation route, switch to onboard power, and request clearance. Authorizing launch starts a countdown. The flight proceeds through ascent, Earth orbit, and a departure burn.
+The flight begins on the launchpad. Open **Launch briefing** for the sequence of checks. Connect ground power, start avionics and life support, load and confirm the approved navigation route, switch to onboard power, and request clearance. Authorizing launch starts a countdown. The flight proceeds through ascent, Earth orbit, and a departure burn.
 
-Two incidents put reserves under pressure. A cooling warning offers a choice between running the backup pump and spending more fuel on backup thrusters. An oxygen supply leak must first be isolated, after which the player can power a repair tool or use a reserve bypass. The flight console shows expected resource costs before committing a command. The route view and exterior camera show the mission stage. The Launch and Moon landing commands have help you can open before committing a command.
+Two incidents put reserves under pressure. A cooling warning offers a choice between running the backup pump and spending more fuel on backup thrusters. An oxygen supply leak must first be isolated, after which the player can power a repair tool or use a reserve bypass. The flight console shows expected resource costs before committing a command. After a decision, the radio shows the result and the next command becomes available. The route view and exterior camera show the mission stage. The Launch and Moon landing commands have help you can open before committing a command.
 
 The final stretch includes lunar braking, a landing checklist, powered descent and touchdown. The landing screen shows the remaining flight resources and offers **Enter lunar outpost** directly. Checkpoint retry lets the player revisit a decision. The flight settings menu includes pause, sound, and reduced motion.
 
 ### Timed lunar outpost
 
-The outpost starts paused. At 1×, one mission day passes in 60 real seconds. The clock has a play/pause button and a speed button that cycles through **1×, 2×, and 4×**. Switching browser tabs pauses the run. The HUD shows current power, food, water, oxygen, and materials, with signed rates for resources that change over time.
+The outpost starts paused. After entering from flight, choose whether to take the facility tour. Reopen **Outpost walkthrough** in Mission Control at any time. At 1×, one mission day passes in 60 real seconds. The clock has a play/pause button and a speed button that cycles through **1×, 2×, and 4×**. Switching browser tabs pauses the run. The HUD shows current power, food, water, oxygen, and materials, with signed rates for resources that change over time.
 
 | Current control | What it does |
 | --- | --- |
@@ -49,7 +49,7 @@ The Apollo 12 and Surveyor 3 overlook unlocks a history exhibit. Three geology s
 
 ### Departure and splashdown
 
-Select **Departure** at the lander to prepare at any time. Boarding is possible on Days 13–15, 28–30, and the final three days of each later 15-day cycle. If you miss a window, keep the surface mission running until the next opening. Boarding opens a playable return flight with lunar liftoff, an Earth transfer burn, reentry alignment, parachute deployment, and ocean splashdown. The return shares the outbound layout, trajectory map, and 3D camera. The debrief reports crew recovery, mission duration, the departure window, the incident response, materials delivered, landmarks visited, and specimens logged. It assigns a score out of 100 for survival and return, outpost reserves, sustainable operations, and exploration. A lost run opens a centered explanation and retry dialog. See the [outpost guide](TIMED_OUTPOST.md#depart-and-score-the-mission) for the rubric.
+Select **Departure** at the lander to prepare at any time. **Departure briefing** explains the timing, crew checks, and ship supplies. Boarding is possible on Days 13–15, 28–30, and the final three days of each later 15-day cycle. If you miss a window, keep the surface mission running until the next opening. Boarding opens a playable return flight with lunar liftoff, an Earth transfer burn, reentry alignment, parachute deployment, and ocean splashdown. The return shares the outbound layout, trajectory map, and 3D camera. The debrief reports crew recovery, mission duration, the departure window, the incident response, materials delivered, landmarks visited, and specimens logged. It assigns a score out of 100 for survival and return, outpost reserves, sustainable operations, and exploration. A lost run opens a centered explanation and retry dialog. See the [outpost guide](TIMED_OUTPOST.md#depart-and-score-the-mission) for the rubric.
 
 ## Science, visuals, and access
 

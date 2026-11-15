@@ -6,7 +6,7 @@ import { mountFlightControls } from './flightControls';
 import type { mountMissionAudio } from '../audio/missionAudio';
 import type { MotionPreference } from './motionPreference';
 
-export function mountFlightIntro(audio: ReturnType<typeof mountMissionAudio>, motion: MotionPreference, enter: (saveKey: string | null, arrival: boolean) => Promise<void>) {
+export function mountFlightIntro(audio: ReturnType<typeof mountMissionAudio>, motion: MotionPreference, enter: (saveKey: string | null, arrival: boolean, fromFlight: boolean) => Promise<void>) {
   const host = document.querySelector<HTMLElement>('#flight-intro')!;
   const line = document.querySelector<HTMLElement>('#intro-line')!;
   const actions = document.querySelector<HTMLElement>('#intro-actions')!;
@@ -39,11 +39,11 @@ export function mountFlightIntro(audio: ReturnType<typeof mountMissionAudio>, mo
     try { return parseOutpost(localStorage.getItem(key) ?? ''); } catch { return undefined; }
   }
 
-  async function openOutpost(key: string | null, arrival: boolean) {
+  async function openOutpost(key: string | null, arrival: boolean, fromFlight = false) {
     if (entered) return;
     entered = true;
     try {
-      await enter(key, arrival);
+      await enter(key, arrival, fromFlight);
       host.hidden = true;
     } catch (error) {
       entered = false;
@@ -53,7 +53,7 @@ export function mountFlightIntro(audio: ReturnType<typeof mountMissionAudio>, mo
 
   async function finish(state: FlightState, unsaved: boolean) {
     const key = unsaved || !storageAvailable ? null : landedOutpostKey(state.runId);
-    await openOutpost(key, !key || !savedOutpost(key));
+    await openOutpost(key, !key || !savedOutpost(key), true);
   }
 
   function openFromMenu(action: () => Promise<void>) {
