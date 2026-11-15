@@ -1,5 +1,6 @@
 import { cacheIds, cacheSites, explorationMaterialTarget, radarRange, type CacheId } from './lunarSurface.ts';
 import { crew, type CrewId } from '../data/crew.ts';
+import type { TrainingSave } from './outpostTraining.ts';
 import { landmarkIds, landmarkRadius, lunarLandmarks, type LandmarkId } from '../data/lunarLandmarks.ts';
 import { cleaningPower, drawHazards, impactParts, lunarIncidents, stormSchedule, type HazardSchedule } from './lunarHazards.ts';
 import { campaignStorm, newCampaign, validCampaign, plots, jobs, stepWorkers, stepRover, migrateRover, cargoCapacity, activeBuilders, workerStatus,
@@ -19,6 +20,7 @@ export interface OutpostState {
   growLights?: boolean; recycler?: boolean; reserveAir?: boolean;
   materials: number; sheltered: boolean; facilities: Facility[];
   campaign: Campaign;
+  training?: TrainingSave;
   outcome: 'active' | 'ready' | 'failed'; message: string;
 }
 export const outpostSaveKey = 'lunar-continuous-outpost-v1';
@@ -446,6 +448,7 @@ export function parseOutpost(raw: string): OutpostState | undefined {
     if (s.version !== 1 || !Number.isInteger(s.elapsed) || s.elapsed < 0 || s.elapsed > 1e7 || typeof s.sheltered !== 'boolean'
       || !['active', 'ready', 'failed'].includes(s.outcome) || typeof s.message !== 'string' || s.message.length > 500
       || !Array.isArray(s.facilities) || s.facilities.length > plots.length) return;
+    if (s.training !== undefined && (!s.training || typeof s.training.forecastChecked !== 'boolean' || typeof s.training.complete !== 'boolean')) return;
     if (!s.facilities.every(f => f && Object.hasOwn(constructionTypes, f.type) && Number.isInteger(f.plot) && f.plot >= 0 && f.plot < plots.length
       && Number.isInteger(f.progress) && f.progress >= 0 && f.progress <= constructionTypes[f.type].seconds)
       || new Set(s.facilities.map(f => f.plot)).size !== s.facilities.length) return;

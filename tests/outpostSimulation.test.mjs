@@ -503,3 +503,35 @@ test('impact parts remain reserved across cancellation, reload, and reassignment
   assert.ok(assignJob(resumed, 'aya', 'arrayRepair'));
   assert.equal(resumed.materials, 88);
 });
+
+test('outpost training follows real construction, job progress, and shelter through the first three days', async () => {
+  const { trainingTask, trainingEndTick } = await import('../src/mission/outpostTraining.ts');
+  const { assignJob } = await import('../src/mission/outpostSimulation.ts');
+  let state = newOutpost(null);
+  state.training = { forecastChecked: false, complete: false };
+  assert.equal(trainingTask(state), 'queue-solar');
+  buildFacility(state, 'solar', 0);
+  assert.equal(trainingTask(state), 'queue-greenhouse');
+  buildFacility(state, 'greenhouse', 1);
+  assert.equal(trainingTask(state), 'reach-day-two');
+  while (state.elapsed < 60) stepOutpost(state);
+  assert.equal(trainingTask(state), 'assign-power');
+  assert.equal(assignJob(state, 'aya', 'power'), '');
+  assert.equal(trainingTask(state), 'finish-power-job');
+  state = parseOutpost(JSON.stringify(state));
+  assert.equal(trainingTask(state), 'finish-power-job');
+  while (state.elapsed < 120) stepOutpost(state);
+  assert.equal(trainingTask(state), 'check-forecast');
+  state.training.forecastChecked = true;
+  assert.equal(trainingTask(state), 'recall-crew');
+  state.sheltered = true;
+  assert.equal(trainingTask(state), 'shelter-drill');
+  while (state.elapsed < trainingEndTick) stepOutpost(state);
+  assert.equal(trainingTask(state), 'complete');
+  assert.equal(state.outcome, 'active');
+  assert.equal(state.materials, 40);
+  state.training.complete = true;
+  assert.deepEqual(parseOutpost(JSON.stringify(state)).training, { forecastChecked: true, complete: true });
+  state.training.complete = 'yes';
+  assert.equal(parseOutpost(JSON.stringify(state)), undefined);
+});

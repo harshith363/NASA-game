@@ -2,18 +2,15 @@
 
 Select **Enter lunar outpost** after touchdown to open a fresh Day 1 for that flight. Choose **Go directly to outpost** from the menu to skip flight and use a separate save. The outpost starts and resumes paused. One mission day takes 60 real seconds at 1×. Cycle through **1×, 2×, and 4×** using the speed button. Switching tabs pauses the simulation. No time passes while the game is closed.
 
-## First run walkthrough
+## Three-day training challenge
 
-Each arrival from the flight section asks if you want the outpost walkthrough. When you go directly to a fresh outpost, the guide opens on your first visit. It opens the Build, Farm, Control Tower, Communications Centre, Rover dock, and Departure panels and highlights the control being explained. Browse with **Next** and **Back**, or close the guide and reopen **Outpost walkthrough** in the lower Mission Control panel. The clock stays paused until you choose **Play**.
+After flying to the Moon and selecting **Enter lunar outpost**, choose **Start challenge** or **Not now**. Going directly to the outpost skips the invitation. The question-mark icon beside Settings opens the tutorial, resumes a saved challenge, or opens the facility tour after training.
 
-1. Read power, food, water, oxygen, and materials in the HUD.
-2. Preview the solar array, greenhouse, and battery bank in **Build**. If you already built one, the tour opens that facility’s panel. To start a new build after the tour, select an empty plot and press **Play**.
-3. Open **Farm** to check crop lighting, water recycling, and the related jobs.
-4. Open **Control Tower** to see the crew roster and assign jobs. Try servicing the power equipment or inspecting the shelter for earlier warnings.
-5. Open **Communications Centre** to request a storm forecast or assign the radar survey job.
-6. Use the shelter controls in **Control Tower** when warned. Bring the rover back if it is out, give the crew time to reach shelter, and release them when the storm clears.
-7. Open **Rover dock** for a short rover trip in clear conditions. Scan, collect a nearby cache, and return to **Dock & unload**.
-8. Use the lander’s **Departure** checklist to get the crew and supplies ready. Open **Departure briefing** for a quick review before boarding.
+1. **Day 1.** Follow the arrows to **Build**. Queue a solar array and greenhouse on separate plots, then press **Play**. The mission pauses at Day 2.
+2. **Day 2.** Open **Control Tower** and go to **Service power equipment**. Choose Aya Chen or another available astronaut in the dropdown, then select **Assign job**. Press **Play** to let the astronaut walk to the job and complete it. The roster shows the remaining work.
+3. **Day 3.** Open **Communications Centre** and select **Request forecast**. Finish construction, then use **Recall crew to shelter** in the Control Tower and give the crew time to walk. Reach Day 4 with all five inside to complete the challenge. A real storm warning can pause the clock, so read it before continuing.
+
+The challenge uses your actual outpost and supplies. Close the tutorial anytime and continue from the same mission time, or reopen it later to see the next objective. The optional **Facility tour** explains the Build, Farm, Control Tower, Communications Centre, Rover dock, and Departure panels while the clock is paused.
 
 ## Establish the base
 

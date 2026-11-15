@@ -1,10 +1,12 @@
+import { mountGuideSpotlight } from './guideSpotlight';
+
 export interface PlayerGuide {
   id: string;
   title: string;
   cards: readonly { title: string; instructions: readonly string[]; target?: string }[];
 }
 
-interface GuideOffer { title: string; description: string }
+interface GuideOffer { title: string; description: string; actionLabel?: string; start?: () => void }
 
 export function mountPlayerGuide(host: HTMLElement, id: string, steps?: {
   enter: (guide: PlayerGuide, index: number) => string | void;
@@ -34,57 +36,15 @@ export function mountPlayerGuide(host: HTMLElement, id: string, steps?: {
   let guide: PlayerGuide;
   let card = 0;
   let caller: HTMLElement | undefined;
-  let target: HTMLElement | null = null;
-  let layoutFrame = 0;
+  const spotlight = mountGuideSpotlight(host, dialog);
+  let afterClose: (() => void) | undefined;
   let initialScroll: { x: number; y: number } | undefined;
   let offer: GuideOffer | undefined;
   const shown = new Set<string>();
 
   function pointAtControl() {
-    target?.classList.remove('guide-highlight');
     const selector = offer ? undefined : steps?.enter(guide, card) ?? guide.cards[card].target;
-    target = selector ? document.querySelector<HTMLElement>(selector) : null;
-    dialog.classList.toggle('player-guide-anchored', !!target);
-    if (!target) return;
-    target.classList.add('guide-highlight');
-    const rect = target.getBoundingClientRect();
-    const panel = target.closest('.sim-facility-panel, .sim-build')?.getBoundingClientRect();
-    const top = Math.max(12, panel?.top ?? 0);
-    const bottom = Math.min(innerHeight - 12, panel?.bottom ?? innerHeight);
-    if (rect.top < top || rect.bottom > bottom) target.scrollIntoView({ block: 'center', behavior: 'instant' });
-  }
-
-  function placeBesideControl() {
-    if (!dialog.open || !target) return;
-    const bounds = target.getBoundingClientRect();
-    const width = document.documentElement.clientWidth;
-    const height = window.innerHeight;
-    const margin = 12;
-    const gap = 14;
-    const cardWidth = Math.min(400, width - margin * 2);
-    const fitsRight = bounds.right + gap + cardWidth <= width - margin;
-    const fitsLeft = bounds.left - gap - cardWidth >= margin;
-    const spaceAbove = bounds.top - gap - margin;
-    const spaceBelow = height - bounds.bottom - gap - margin;
-    const beside = fitsRight || fitsLeft;
-    const below = spaceBelow >= spaceAbove;
-    const availableHeight = beside ? height - margin * 2 : Math.max(spaceAbove, spaceBelow);
-    const set = (property: string, value: number) => {
-      const pixels = `${Math.round(value)}px`;
-      if (dialog.style.getPropertyValue(property) !== pixels) dialog.style.setProperty(property, pixels);
-    };
-    set('--guide-width', cardWidth);
-    set('--guide-height', availableHeight);
-    const cardHeight = dialog.offsetHeight;
-    const clamp = (value: number, limit: number) => Math.max(margin, Math.min(value, limit - margin));
-    const left = fitsRight ? bounds.right + gap : fitsLeft ? bounds.left - gap - cardWidth
-      : (bounds.left + bounds.right - cardWidth) / 2;
-    const top = beside ? (bounds.top + bounds.bottom - cardHeight) / 2
-      : below ? bounds.bottom + gap : bounds.top - gap - cardHeight;
-    set('--guide-left', clamp(left, width - cardWidth));
-    set('--guide-top', clamp(top, height - cardHeight));
-    // The scene can move map markers while the guide is open.
-    layoutFrame = requestAnimationFrame(placeBesideControl);
+    spotlight.pointAt(selector ? document.querySelector<HTMLElement>(selector) : null);
   }
 
   function render() {
@@ -105,14 +65,12 @@ export function mountPlayerGuide(host: HTMLElement, id: string, steps?: {
     }));
     back.hidden = !offer && card === 0;
     back.textContent = offer ? 'Not now' : 'Back';
-    next.textContent = offer ? 'Start walkthrough' : card === guide.cards.length - 1 ? 'Done' : 'Next';
+    next.textContent = offer ? offer.actionLabel ?? 'Start walkthrough' : card === guide.cards.length - 1 ? 'Done' : 'Next';
   }
   function move(step: number) {
     card = step;
     render();
-    cancelAnimationFrame(layoutFrame);
     pointAtControl();
-    placeBesideControl();
     dialog.scrollTop = 0;
     cardTitle.focus({ preventScroll: true });
   }
@@ -130,7 +88,6 @@ export function mountPlayerGuide(host: HTMLElement, id: string, steps?: {
     render();
     dialog.showModal();
     pointAtControl();
-    placeBesideControl();
     dialog.scrollTop = 0;
     (offer || guide.cards.length === 1 ? next : cardTitle).focus({ preventScroll: true });
     if (!offer) markSeen();
@@ -139,7 +96,10 @@ export function mountPlayerGuide(host: HTMLElement, id: string, steps?: {
   dialog.querySelector<HTMLButtonElement>('.icon-button')!.onclick = () => dialog.close();
   back.onclick = () => { if (offer) dialog.close(); else move(card - 1); };
   next.onclick = () => {
-    if (offer) {
+    if (offer?.start) {
+      afterClose = offer.start;
+      dialog.close();
+    } else if (offer) {
       offer = undefined;
       markSeen();
       move(0);
@@ -147,12 +107,13 @@ export function mountPlayerGuide(host: HTMLElement, id: string, steps?: {
     else move(card + 1);
   };
   dialog.addEventListener('close', () => {
-    cancelAnimationFrame(layoutFrame);
-    target?.classList.remove('guide-highlight');
-    target = null;
+    spotlight.clear();
     if (!offer) steps?.close(guide);
     if (initialScroll) window.scrollTo({ left: initialScroll.x, top: initialScroll.y, behavior: 'instant' });
     if (caller?.isConnected) caller.focus({ preventScroll: true });
+    const resume = afterClose;
+    afterClose = undefined;
+    resume?.();
   });
   return {
     get open() { return dialog.open; },

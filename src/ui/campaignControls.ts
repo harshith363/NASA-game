@@ -284,7 +284,7 @@ export function mountCampaignControls(
           <select id="worker-${job}">${crew.map(member => `<option value="${member.id}" ${spec.specialist === member.id ? 'selected' : ''}>${member.name}</option>`).join('')}</select>
           <p class="job-status"></p><p data-worker-block hidden></p><button class="radio-action">Assign job</button>`;
         const select = row.querySelector('select')!;
-        select.onchange = () => renderJobs(target);
+        select.onchange = changed;
         row.querySelector('button')!.onclick = () => {
           const current = state();
           const id = select.value as CrewId;

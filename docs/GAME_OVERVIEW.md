@@ -18,7 +18,7 @@ The final stretch includes lunar braking, a landing checklist, powered descent a
 
 ### Timed lunar outpost
 
-The outpost starts paused. After entering from flight, choose whether to take the facility tour. Reopen **Outpost walkthrough** in Mission Control at any time. At 1×, one mission day passes in 60 real seconds. The clock has a play/pause button and a speed button that cycles through **1×, 2×, and 4×**. Switching browser tabs pauses the run. The HUD shows current power, food, water, oxygen, and materials, with signed rates for resources that change over time.
+The outpost starts paused. After entering from flight, choose whether to take the three-day training challenge. The question-mark icon beside Settings reopens training and the facility tour. At 1×, one mission day passes in 60 real seconds. The clock has a play/pause button and a speed button that cycles through **1×, 2×, and 4×**. Switching browser tabs pauses the run. The HUD shows current power, food, water, oxygen, and materials, with signed rates for resources that change over time.
 
 | Current control | What it does |
 | --- | --- |
