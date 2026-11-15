@@ -59,6 +59,7 @@
             <section id="day-report" class="report console" aria-labelledby="report-title" hidden>
               <h2 id="report-title" tabindex="-1"></h2>
               <p id="report-line"></p>
+              <p id="report-resources" aria-label="Resource changes"></p>
               <details id="report-details">
                 <summary>Resource breakdown</summary>
                 <ul id="report-items"></ul>
@@ -78,7 +79,7 @@
                 </header>
                 <div id="tower-views" class="view-switch" aria-label="Tower view">
                   <button type="button" class="radio-action" data-tower-view="tower-dashboard" aria-pressed="true">Mission</button>
-                  <button type="button" class="radio-action" data-tower-view="tower-observatory" aria-pressed="false">Observatory</button>
+                  <button type="button" class="radio-action" data-tower-view="tower-observatory" aria-pressed="false">Control Centre</button>
                 </div>
                 <div id="tower-dashboard">
                   <div class="metric-grid">
@@ -102,11 +103,27 @@
                   <div id="control-jobs"></div>
                 </div>
                 <div id="tower-observatory" hidden>
+                  <article class="observation">
+                    <p class="eyebrow">NASA DONKI · Space weather</p>
+                    <h3>Solar particle reports</h3>
+                    <p>Look up particles detected by spacecraft. These reports do not measure radiation at the outpost.</p>
+                    <button class="radio-action" type="button" data-particle-query="training">Look up training event</button>
+                    <button class="radio-action" type="button" data-particle-query="recent">Check last 30 days</button>
+                    <p id="particle-status" role="status"></p>
+                    <ul id="particle-results" class="particle-results" aria-label="NASA particle reports" hidden></ul>
+                    <a href="https://ccmc.gsfc.nasa.gov/tools/DONKI/" target="_blank" rel="noopener">About NASA’s DONKI catalog</a>
+                  </article>
                   <article class="observation"><p class="eyebrow">Historical observation · NASA DONKI</p>
                     <h3>Solar energetic particles</h3>
                     <div class="observation-track"><strong id="solar-observer"></strong><span aria-hidden="true">● ━━━━━</span><time id="solar-observed-at"></time></div>
                     <p>A spacecraft detected fast-moving particles from the Sun. This record inspired the training alert.</p>
                     <a id="solar-source" target="_blank" rel="noopener">View the archived observation</a>
+                  </article>
+                  <article class="observation">
+                    <p class="eyebrow">Outpost training simulation</p>
+                    <h3>Plan for the particle alert</h3>
+                    <p>Use the archived event to explore why the crew shelters and how much power is left for crops.</p>
+                    <button id="control-storm-briefing" class="radio-action" type="button">Compare shelter plans</button>
                   </article>
                   <article class="observation"><p class="eyebrow">Reference fact · NASA</p>
                     <h3>Earth to Moon</h3>
@@ -240,7 +257,7 @@
         <p class="eyebrow">Junior Astronaut Mission Trainer</p>
         <h2 id="intro-title">Lunar outpost</h2>
         <div class="intro-dialogue console">
-          <p id="intro-line" role="status">Ready for touchdown? Keep five astronauts safe for seven days.</p>
+          <p id="intro-line" role="status">Ready for touchdown? Build an outpost and keep five astronauts safe through a solar storm.</p>
           <div id="intro-actions" class="intro-actions">
             <button id="start-sound" class="action" type="button">Start with sound</button>
             <button id="start-muted" class="radio-action" type="button">Play muted</button>

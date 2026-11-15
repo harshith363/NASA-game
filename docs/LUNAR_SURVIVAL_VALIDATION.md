@@ -1,5 +1,7 @@
 # Seven-day Lunar survival milestone
 
+> **Historical reference.** Historical validation for the seven-day daily-turn build. The daily strategies below are retained for legacy regression checks. See the [current game overview](GAME_OVERVIEW.md) and [campaign validation](CAMPAIGN_VALIDATION.md).
+
 ## Baseline
 
 The starting prototype at commit `a551406` passed five rule tests and the production build. Its exact desktop and mobile layout can be reproduced from that commit. Chrome reference captures used a 1280 × 800 desktop viewport and a 360 × 640 phone viewport after skipping arrival. The captures show the initial Control Tower panel, angled lunar outpost, colored facilities, warm console accents, and separate resource telemetry.

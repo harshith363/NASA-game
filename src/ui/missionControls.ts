@@ -1,3 +1,4 @@
+import { resourceChange } from './resourceChange';
 import { mountTimeline, harvestForecast, forecastAdvice } from './missionTimeline';
 import { mountFacilityJobs } from './facilityJobs';
 import { missionBeat } from './missionStory';
@@ -13,6 +14,7 @@ import type { mountBuildingControls } from './buildingControls';
 import { mountCrewControls } from './crewControls';
 import { mountStormBriefing } from './stormBriefing';
 import { mountMissionRadio } from './missionRadio';
+import { mountControlCentre } from './controlCentre';
 import type { MotionPreference } from './motionPreference';
 
 const lightSteps = ['off', 'low', 'full'] as const;
@@ -91,6 +93,8 @@ export function mountMission(
   byId('facility-tabs').append(crewButton);
   const crewControls = mountCrewControls(() => present({ type: 'forecast' }));
   const stormButton = byId<HTMLButtonElement>('open-storm');
+  const controlStormButton = byId<HTMLButtonElement>('control-storm-briefing');
+  mountControlCentre();
   const storm = mountStormBriefing(motion, () => present({ type: 'forecast' }), plan => {
     if (plan) {
       setDraft(plan);
@@ -224,6 +228,7 @@ export function mountMission(
     const day = state.completedDays + 1;
     radio.render(day, state.outcome);
     stormButton.hidden = !save.reviewed || state.outcome !== 'active' || day < rules.stormStart || day > rules.stormStart + 1;
+    controlStormButton.disabled = !save.reviewed || state.outcome !== 'active' || day > rules.stormStart + 1;
     byId('day-title').textContent = !save.reviewed
       ? `Day ${state.completedDays} of ${rules.days} · Report`
       : state.outcome === 'active' ? `Day ${day} of ${rules.days} · Plan` : 'Mission complete';
@@ -255,7 +260,7 @@ export function mountMission(
     safety.dataset.tone = result.hazards.includes('exposure') ? 'danger' : result.phase === 'warning' ? 'attention' : 'safe';
     byId('tower-phase').textContent = risk ? (plan.location === 'shelter' ? 'Sheltered' : 'Exposure risk') : 'Safe to work outside';
     byId('forecast-detail').textContent = forecast[result.phase];
-    byId('tower-power').textContent = `${state.battery} → ${result.next.battery}`;
+    byId('tower-power').replaceChildren(resourceChange('Battery', state.battery, result.next.battery));
     byId('tower-budget').textContent = result.hazards.includes('power') ? 'Essential power shortfall before sunlight' : `+${solar} solar · −${demand} demand`;
     byId('location-habitat').textContent = risk ? '0 fan power · exposure risk' : '0 fan power · outside work';
     byId('location-shelter').textContent = '+1 fan power · outside jobs pause';
@@ -283,7 +288,7 @@ export function mountMission(
     byId('light-output').textContent = `${light.label} · ${light.power} power · +${result.growth} crop progress${difference ? comparison : ''}`;
     for (const key of ['battery', 'air', 'food'] as const) {
       const value = byId(`${key}-value`);
-      value.textContent = `${state[key]} → ${result.next[key]}`;
+      value.replaceChildren(resourceChange('', state[key], result.next[key]));
       value.setAttribute('aria-label', `Current ${state[key]}, planned ${result.next[key]}`);
     }
     drawTimeline(state, history, result, harvest);
@@ -309,7 +314,8 @@ export function mountMission(
       else if (result.day === 4) form.querySelector<HTMLInputElement>('input[name=airMode]:checked')?.focus();
     };
     lights.setAttribute('aria-valuetext', light.label);
-    byId('plan-summary').textContent = `Tomorrow’s reserves · ${result.next.battery} battery · ${result.next.air} air · ${result.next.food} food`;
+    byId('plan-summary').replaceChildren(...(['battery', 'air', 'food', 'water'] as const)
+      .map(key => resourceChange(key, state[key], result.next[key])));
     byId('plan-preview').textContent = `+${result.generation} solar power · −${demand} used · −${rules.foodPerDay} food${result.harvest ? ` · +${result.harvest} harvest` : ''}`;
     const working = crew.filter(({ id }) => plan.assignments[id] !== 'rest').length;
     byId('plan-crew').textContent = `${working} crew working · ${crew.length - working} resting · assignments reset each day`;
@@ -374,6 +380,9 @@ export function mountMission(
     byId('report-title').textContent = `Day ${result.day} report`;
     const [summary, ...items] = reportItems(result);
     byId('report-line').textContent = summary;
+    const before = history[result.day - 2]?.next ?? startMission(result.next.scenario);
+    byId('report-resources').replaceChildren(...(['battery', 'air', 'food', 'water'] as const)
+      .map(key => resourceChange(key, before[key], result.next[key])));
     byId('report-next').textContent = state.outcome === 'active'
       ? missionBeat(state, previewDay(state, { ...state.lastPlan, assignments: resting })).title
       : '';
@@ -469,6 +478,7 @@ export function mountMission(
     else if (!crewControls.panel.hidden) closeCrew(true);
   });
   stormButton.addEventListener('click', () => storm.open(state, draft()));
+  controlStormButton.addEventListener('click', () => storm.open(state, draft(), true));
   byId('skip-resolution').addEventListener('click', () => finish?.());
   motion.changes.addEventListener('change', () => { if (motion.reduced) finish?.(); });
   form.addEventListener('input', renderPreview);

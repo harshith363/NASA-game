@@ -1,5 +1,7 @@
 # Lunar game experience improvement plan
 
+> **Historical reference.** Historical design for the seven-day Lunar version. The End Day flow, daily forecast and old facility panels are retained here as design history. See the [current game overview](docs/GAME_OVERVIEW.md) and [campaign validation](docs/CAMPAIGN_VALIDATION.md).
+
 Prepared 14 November 2026 following feedback on the seven-day Lunar game with five specialists.
 
 Status — implemented in the seven-day Lunar game. Physical-device validation and facilitated playtesting remain pending.

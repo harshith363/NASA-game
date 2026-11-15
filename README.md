@@ -1,12 +1,6 @@
 # Junior Astronaut Mission Trainer
 
-Land at a lunar outpost and keep five astronauts safe for seven days. Read the daily forecast, plan power and life support, and preview tomorrow’s supplies before choosing **End Day**. Shelter during the particle alert and grow a crop in time to supplement the crew’s stored food. Finish with at least four battery and two food to complete the readiness objective.
-
-The Farm controls grow lights and introduces water recovery on day two. The Control Tower shows generation and demand separately, along with air and shelter choices. The Communications Centre can provide a forecast and includes the archived NASA observation that inspired the alert. Resource units, daily sunlight, and crop timing are training parameters.
-
-The Crew panel lets you consult five specialists and assign each astronaut one job per day. Rest restores readiness. The day-two storm briefing includes an illustration, crew advice, and shelter plans you can compare before applying one on an alert day.
-
-The browser saves each committed turn. **Resume mission** restores the current briefing, unread report, or debrief. **Start new mission** replaces the existing run. The debrief offers standard and low-battery training. Settings include audio and reduced motion. The game supports keyboard controls and a static map when WebGL is unavailable.
+Fly from Earth to the Moon, build and staff a lunar outpost, explore by rover, and bring five astronauts home. Survive 15 full mission days, pass the departure checks, and guide the return capsule to ocean splashdown. The debrief scores the run out of 100.
 
 ## Run locally
 
@@ -17,14 +11,23 @@ npm ci
 npm run dev
 ```
 
-Open the URL printed by Vite. Run `npm test` for rule and save checks, `npm run build` for type checking and the production bundle, and `npm run preview` to serve that bundle locally.
+Open the URL printed by Vite. Start or resume the outbound flight, or choose **Go directly to outpost** to skip the flight. The outpost starts paused. Build and assign crew before pressing **Play**. After touchdown, select **Enter lunar outpost** to start Day 1 for that flight. Each landed flight has its own saved outpost in browser storage. The direct outpost bypass uses a separate save.
 
-## Project layout
+- `npm test` runs simulation, save, and data-parsing checks.
+- `npm run build` type-checks and writes the production bundle to `dist/`.
+- `npm run preview` serves the production bundle locally after a build.
 
-- `src/mission/` holds daily rules, save validation, and the event contract for visuals and audio.
-- `src/ui/` holds the HUD, facility controls, forecasts, radio, reports, and preferences.
-- `src/scenes/` holds the Three.js outpost, arrival, turn animations, and static map.
-- `src/audio/` and `public/audio/` hold the adaptive score and cues. See the [asset register](docs/ASSET_REGISTER.md).
-- `src/data/` holds facility metadata and the bundled NASA DONKI record.
+Netlify publishes `dist/` and serves the telemetry function in `netlify/functions/`. Vite serves the same telemetry endpoint in development and preview. The Control Tower and Communications Centre offer a telemetry report with simulated readings clearly tagged. The external report requires network access from the server.
 
-See the [survival plan](SURVIVAL_GAME_PHASED_PLAN.md) for the implementation handoff and [Lunar milestone verification](docs/LUNAR_SURVIVAL_VALIDATION.md) for rules, scenarios, and checks.
+## Documentation
+
+| Start here | What it covers |
+| --- | --- |
+| [Game overview](docs/GAME_OVERVIEW.md) | Current chapters, controls, science, save behavior, and project structure. |
+| [Timed lunar outpost](docs/TIMED_OUTPOST.md) | Construction, crew jobs, storms, rover radar, departure, and scoring. |
+| [Control Tower telemetry](docs/TELEMETRY.md) | All 15 readings, providers, units, and fallback behavior. |
+| [Campaign phases](docs/LUNAR_CAMPAIGN_PHASED_PLAN.md) | How the project progressed from staffed facilities to Earth return and exploration. |
+| [Campaign validation](docs/CAMPAIGN_VALIDATION.md) | Current automated results, browser smoke checks, and release checks. |
+| [Asset and data register](docs/ASSET_REGISTER.md) | Credits, sources, and which assets the current game uses. |
+
+The older [prototype plan](JUNIOR_ASTRONAUT_IMPLEMENTATION_PLAN.md), [prototype feedback](PROTOTYPE_IMPROVEMENT_PLAN.md), [seven-day survival plan](SURVIVAL_GAME_PHASED_PLAN.md), [Lunar experience plan](LUNAR_GAME_EXPERIENCE_IMPROVEMENT_PLAN.md), and [outbound flight plan](docs/EARTH_TO_MOON_IMPLEMENTATION_PLAN.md) document earlier milestones. Their validation records are linked from the [current campaign validation](docs/CAMPAIGN_VALIDATION.md).

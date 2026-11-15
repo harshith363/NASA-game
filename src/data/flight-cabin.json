@@ -1,0 +1,60 @@
+{
+  "source": "https://visualization.osdr.nasa.gov/eda/dashboard_RR-1",
+  "retrieved": "2026-11-14",
+  "mission": "RR-1",
+  "location": "ISS cabin (EDA co2_iss series)",
+  "units": "ppm",
+  "timeSystem": "GMT (source Controller_Time_GMT)",
+  "processing": "First 144 five-minute rows on 2014-09-26, every twelfth row. No averaging, interpolation, or unit conversion.",
+  "sourceSha256": "d7284e1d82a9ca6fe56670fa7ac48fcff4fb361c4f6a6025ede7087352a7c0aa",
+  "samples": [
+    {
+      "time": "2014-09-26 00:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 01:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 02:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 03:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 04:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 05:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 06:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 07:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 08:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 09:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 10:00:00",
+      "co2": 2646
+    },
+    {
+      "time": "2014-09-26 11:00:00",
+      "co2": 2646
+    }
+  ]
+}

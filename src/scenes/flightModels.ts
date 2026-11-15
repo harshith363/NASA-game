@@ -73,6 +73,13 @@ export function createAstronaut(color: number) {
   tool.visible = false;
   return {
     figure,
+    sit() {
+      tool.visible = false;
+      for (const { arm, leg } of limbs) {
+        arm.rotation.set(-.65, 0, 0);
+        leg.rotation.x = -1.3;
+      }
+    },
     work(progress: number, task: 'inspect' | 'repair' | 'grow') {
       const cycle = progress * Math.PI * 8;
       tool.visible = true;

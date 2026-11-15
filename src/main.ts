@@ -1,6 +1,6 @@
 import { mountOutpost } from './scenes/OutpostScene';
 import { mountBuildingControls } from './ui/buildingControls';
-import { mountMission } from './ui/missionControls';
+import { mountTimedOutpost } from './ui/outpostControls';
 import { mountFlightIntro } from './ui/flightIntro';
 import { mountMissionAudio } from './audio/missionAudio';
 import type { PresentMissionEvent } from './mission/presentation';
@@ -9,20 +9,21 @@ import './styles.css';
 
 const motion = mountMotionPreference();
 
-const navigation = mountBuildingControls((building) => mission.openBuilding(building));
-const outpost = mountOutpost(
-  document.querySelector<HTMLElement>('#outpost-canvas')!,
-  navigation.markers,
-  (building) => mission.openBuilding(building),
-  motion,
-);
 const audio = mountMissionAudio();
-const present: PresentMissionEvent = (event) => {
-  outpost.present(event);
-  audio.present(event);
-};
-const mission = mountMission(navigation, outpost.select, present, motion);
-mountFlightIntro(outpost.ready, present, audio.start, audio.resume, mission.enter, mission.canResume, mission.recoveryNotice, motion);
+let mission: ReturnType<typeof mountTimedOutpost> | undefined;
+let entered = false;
+mountFlightIntro(audio, motion, async (saveKey, arrival) => {
+  if (entered) return;
+  entered = true;
+  const navigation = mountBuildingControls(building => mission?.openBuilding(building));
+  const outpost = mountOutpost(document.querySelector<HTMLElement>('#outpost-canvas')!, navigation.markers, building => mission?.openBuilding(building), motion, plot => mission?.openExpansion(plot));
+  const present: PresentMissionEvent = event => { outpost.present(event); audio.present(event); };
+  mission = mountTimedOutpost(outpost.updateFacilities, audio.pause, saveKey, id => { outpost.select(id); navigation.select(id); });
+  navigation.enable(true);
+  await outpost.ready;
+  document.querySelector<HTMLElement>('#mission-workspace')!.inert = false;
+  if (arrival) present({ type: 'arrival' });
+});
 
 const fullscreen = document.querySelector<HTMLButtonElement>('#fullscreen')!;
 fullscreen.hidden = !document.fullscreenEnabled;

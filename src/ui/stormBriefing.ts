@@ -128,7 +128,7 @@ export function mountStormBriefing(motion: MotionPreference, onRadio: () => void
   for (const button of replies) button.addEventListener('click', () => explain(button.dataset.stormReply === 'tradeoff'));
 
   return {
-    open(state: MissionState, plan: DailyPlan) {
+    open(state: MissionState, plan: DailyPlan, showTradeoffs = false) {
       const day = state.completedDays + 1;
       const alertDay = Math.min(start + 1, Math.max(start, day));
       compare = { state, plan, alertDay };
@@ -140,7 +140,7 @@ export function mountStormBriefing(motion: MotionPreference, onRadio: () => void
       dialog.scrollTop = 0;
       dialog.querySelector<HTMLElement>('h2')!.focus();
       updateMedia();
-      explain(false);
+      explain(showTradeoffs);
       onRadio();
     },
   };

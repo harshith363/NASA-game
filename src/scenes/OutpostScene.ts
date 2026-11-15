@@ -1,3 +1,7 @@
+import { cacheIds, cacheSites, missionSunElevation } from '../mission/lunarSurface';
+import { locations, shelter, workerStatus } from '../mission/lunarCampaign';
+import { box, disposeModel, expansionModel, roverModel } from './campaignModels';
+import { plots, constructionTypes, nextBuild, stormAt, type OutpostState } from '../mission/outpostSimulation';
 import * as THREE from 'three';
 import { crew as crewRoster } from '../data/crew';
 import { buildings, type Building } from '../data/buildings';
@@ -21,6 +25,7 @@ export function mountOutpost(
   markers: Record<BuildingId, HTMLButtonElement>,
   activate: (building: Building) => void,
   motion: MotionPreference,
+  activateExpansion: (plot: number) => void = () => {},
 ) {
   const canvas = document.createElement('canvas');
   let renderer: THREE.WebGLRenderer;
@@ -60,6 +65,77 @@ export function mountOutpost(
     scene.add(model.group);
     return { building, ...model };
   });
+
+  const expansions = plots.map(([x, z], plot) => {
+    const group = new THREE.Group();
+    group.userData.plot = plot;
+    group.position.set(x, lunarHeight(x, z), z);
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.45, .12, 6), new THREE.MeshStandardMaterial({ color: 0x77808a, wireframe: true }));
+    group.add(pad); scene.add(group);
+    return { group, signature: '' };
+  });
+  let timedState: OutpostState | undefined;
+  const rover = roverModel(); scene.add(rover.model);
+  const caches = cacheIds.map(id => {
+    const cache = new THREE.Group();
+    const [x,z] = cacheSites[id].point;
+    cache.position.set(x,lunarHeight(x,z),z);
+    box(cache,[1.65,.21,1.28],[0,.12,0],0x626f78);
+    box(cache,[1.22,.7,.8],[0,.47,0],0xc58243);
+    for (const rail of [-.41,.41]) box(cache,[.09,.72,.86],[rail,.48,0],0xd9b786);
+    box(cache,[.08,1.4,.08],[.6,.79,.3],0xa9a7a0);
+    const beacon = box(cache,[.15,.21,.15],[.6,1.55,.3],0x75ffbf,true);
+    scene.add(cache);
+    return {id,cache,beacon};
+  });
+  const overlook = new THREE.Group();
+  overlook.position.set(locations.heritage[0], lunarHeight(...locations.heritage), locations.heritage[1]);
+  box(overlook,[1.4,.15,1.2],[0,.09,0],0x7f9da9);
+  box(overlook,[1.2,.78,.13],[0,.63,-.48],0x9cc8d5);
+  scene.add(overlook);
+  // Scale model beside the interpretive sign, separate from collectible equipment.
+  const surveyor = new THREE.Group();
+  surveyor.position.set(-21, lunarHeight(-21,9.5), 9.5);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.48,.64,.45,7),
+    new THREE.MeshStandardMaterial({ color:0xccc3a6, metalness:.3, roughness:.5 }));
+  body.position.y = .62; surveyor.add(body);
+  box(surveyor,[.08,.8,.08],[0,1.03,0],0xcbc7b6);
+  const panel = box(surveyor,[.64,.06,.64],[0,1.42,0],0x3d6490);
+  panel.rotation.z = .26;
+  for (let leg = 0; leg < 3; leg++) {
+    const base = new THREE.Group(); base.rotation.y = leg * 2 * Math.PI / 3;
+    surveyor.add(base);
+    const strut = box(base,[.09,.91,.09],[.52,.4,0],0xc6bfa6);
+    strut.rotation.z = .65;
+    box(base,[.28,.1,.28],[.78,.1,0],0xc4a066);
+  }
+  scene.add(surveyor);
+  const dock = new THREE.Group();
+  dock.position.set(locations.dock[0], lunarHeight(...locations.dock), locations.dock[1]);
+  box(dock,[2.55,.1,2.6],[0,.02,0],0x596d78);
+  for (const x of [-1.19,1.19]) box(dock,[.13,.12,2.55],[x,.09,0],0x8bdab7,true);
+  scene.add(dock);
+  let driving = false;
+  function updateFacilities(state: OutpostState, driveView = false) {
+    timedState = state;
+    driving = driveView;
+    fallback?.updateFacilities(state, driveView);
+    phase = stormAt(state.elapsed, state.campaign.safetyChecked);
+    sun.position.y = Math.hypot(sun.position.x,sun.position.z) * Math.tan(THREE.MathUtils.degToRad(missionSunElevation(state.elapsed)));
+    growLevel = state.growLights === false ? 0 : .65;
+    for (const { id, cache } of caches) cache.visible = state.campaign.rover.contacts.includes(id)
+      && !state.campaign.rover.collected.includes(id);
+    expansions.forEach((site, index) => {
+      const facility = state.facilities.find(f => f.plot === index);
+      const done = !!facility && facility.progress >= constructionTypes[facility.type].seconds;
+      const online = facility?.enabled !== false && (facility?.type !== 'greenhouse' || state.growLights !== false);
+      const signature = facility ? `${facility.type}-${done}-${online}` : '';
+      if (site.signature === signature) return;
+      site.signature = signature;
+      if (site.group.children[1]) disposeModel(site.group.children[1]);
+      if (facility) site.group.add(expansionModel(facility.type, done, online));
+    });
+  }
 
   const pathMaterial = new THREE.MeshStandardMaterial({ color: 0x746c64, roughness: 1 });
   const path = new THREE.BufferGeometry();
@@ -108,6 +184,14 @@ export function mountOutpost(
   lander.add(ramp);
   scene.add(lander);
   const crew = crewRoster.map(member => createAstronaut(member.color));
+  const workerLabels = crewRoster.map(member => {
+    const name = document.createElement('span');
+    name.className = 'worker-map-label';
+    name.textContent = member.name.split(' ')[0];
+    name.style.color = `#${member.color.toString(16)}`;
+    container.append(name);
+    return name;
+  });
   for (const { figure } of crew) {
     figure.rotation.y = Math.PI;
     figure.visible = false;
@@ -318,6 +402,12 @@ export function mountOutpost(
   canvas.addEventListener('click', (event) => {
     const building = pick(event);
     if (building) activate(building);
+    else {
+      const hit = raycaster.intersectObjects(expansions.map(site => site.group), true)[0];
+      let item = hit?.object as THREE.Object3D | undefined;
+      while (item && item.userData.plot === undefined) item = item.parent ?? undefined;
+      if (item) activateExpansion(item.userData.plot);
+    }
   });
 
   function resize() {
@@ -333,14 +423,73 @@ export function mountOutpost(
   observer.observe(container);
   resize();
   const start = performance.now();
+  const roverCamera = new THREE.Vector3();
+  const roverLook = new THREE.Vector3();
+  const strutTop = new THREE.Vector3(), strutEnd = new THREE.Vector3(), strutDirection = new THREE.Vector3();
+  const forwardAxis = new THREE.Vector3(0,0,1);
+  let chaseStarted = false;
+  let previousRender = start;
 
   function render(now: number) {
+    const dt = Math.min(.1, (now - previousRender) / 1000);
+    previousRender = now;
     const moving = !motion.reduced;
     const time = moving ? (now - start) / 1000 : 0;
     const compact = width < 760;
     const distance = Math.max(.92, (compact ? 1.09 : .94) / camera.aspect);
     const arrivalBlend = renderArrival(now);
     renderAction(now);
+    if (timedState) {
+      const { campaign } = timedState;
+      const [x,z] = campaign.rover.position;
+      const { heading, velocity, steering } = campaign.rover;
+      const blend = moving ? 1-Math.exp(-dt*14) : 1;
+      const old = rover.model.position.distanceTo(anchor.set(x,lunarHeight(x,z),z));
+      rover.model.position.lerp(anchor, old > 8 ? 1 : blend);
+      const angle = heading - rover.model.rotation.y;
+      rover.model.rotation.y += Math.atan2(Math.sin(angle),Math.cos(angle)) * blend;
+      const cosine = Math.cos(rover.model.rotation.y), sine = Math.sin(rover.model.rotation.y);
+      const heights = rover.wheels.map(({ x:wx, z:wz }) =>
+        lunarHeight(rover.model.position.x + wx*cosine + wz*sine, rover.model.position.z - wx*sine + wz*cosine));
+      const average = heights.reduce((sum,value) => sum+value,0)/4;
+      const [backLeft,frontLeft,backRight,frontRight] = heights;
+      rover.body.position.y = average-rover.model.position.y;
+      rover.body.rotation.x = Math.atan2(backLeft+backRight-frontLeft-frontRight,3.04);
+      rover.body.rotation.z = Math.atan2(frontRight+backRight-frontLeft-backLeft,3.16) - steering * velocity * .013;
+      rover.body.updateMatrix();
+      rover.wheels.forEach(({ x:wx,z:wz,knuckle,roll,strut }, index) => {
+        knuckle.position.y = heights[index] - rover.model.position.y + .36;
+        knuckle.rotation.y = wz > 0 ? steering*.46 : 0;
+        if (moving) roll.rotation.x += velocity * dt / .36;
+        strutTop.set(wx*.54,.55,wz).applyMatrix4(rover.body.matrix);
+        strutEnd.copy(knuckle.position);
+        strutDirection.subVectors(strutEnd,strutTop);
+        strut.position.copy(strutTop).lerp(strutEnd,.5);
+        strut.scale.z = strutDirection.length();
+        strut.quaternion.setFromUnitVectors(forwardAxis,strutDirection.normalize());
+      });
+      for (const { beacon } of caches) beacon.scale.y = moving ? 1 + .22*Math.sin(time*4) : 1;
+      if (arrivalBlend === 1) crew.forEach(({ figure, walk, work, sit }, i) => {
+        const member = crewRoster[i];
+        const point = campaign.workers[member.id].position;
+        const status = workerStatus(campaign, member.id, timedState!.sheltered, nextBuild(timedState!)?.plot);
+        if (campaign.rover.driver === member.id) {
+          figure.visible = true;
+          figure.position.copy(rover.model.position); figure.position.y += .71 + rover.body.position.y;
+          figure.rotation.y = campaign.rover.heading;
+          sit();
+          return;
+        }
+        figure.visible = status !== 'In shelter';
+        if (!figure.visible) return;
+        const dx = point[0]-figure.position.x, dz = point[1]-figure.position.z;
+        const walking = Math.hypot(dx,dz) > .08;
+        const stride = moving && walking ? walk(time * 1.9,true) : walk(0,false);
+        if (walking) figure.rotation.y = Math.atan2(dx,dz);
+        figure.position.lerp(anchor.set(point[0],lunarHeight(...point) + stride,point[1]), moving ? .15 : 1);
+        if (moving && !walking && status.startsWith('Working')) work(time * .45, member.id === 'imani' ? 'grow' : 'repair');
+      });
+    }
     const focus = models.find(({ building }) => building.id === selected);
     aim.set(
       focus && !compact ? focus.group.position.x * .12 : 0,
@@ -353,6 +502,16 @@ export function mountOutpost(
       THREE.MathUtils.lerp(11, 20, arrivalBlend) * distance + (moving ? Math.exp(-time * 2) * 2.6 : 0),
       look.z + THREE.MathUtils.lerp(19, 28, arrivalBlend) * distance,
     );
+    if (driving && timedState) {
+      const heading = rover.model.rotation.y;
+      const { x, y, z } = rover.model.position;
+      const cameraBlend = !chaseStarted || !moving ? 1 : 1-Math.exp(-dt*5.5);
+      roverCamera.lerp(anchor.set(x - Math.sin(heading)*7, y+4.4, z - Math.cos(heading)*7),cameraBlend);
+      roverLook.lerp(anchor.set(x + Math.sin(heading)*3,y+.7,z + Math.cos(heading)*3),cameraBlend);
+      camera.position.copy(roverCamera);
+      look.copy(roverLook);
+      chaseStarted = true;
+    } else chaseStarted = false;
     camera.lookAt(look);
     camera.updateMatrixWorld();
 
@@ -373,6 +532,15 @@ export function mountOutpost(
       markers[building.id].style.top = `${(.5 - anchor.y * .5) * 100}%`;
     }
 
+    crew.forEach(({ figure }, i) => {
+      const label = workerLabels[i];
+      label.hidden = !timedState || !figure.visible || driving || timedState.campaign.rover.driver === crewRoster[i].id;
+      if (label.hidden) return;
+      anchor.copy(figure.position); anchor.y += 1.3; anchor.project(camera);
+      label.hidden = Math.abs(anchor.x) > .97 || Math.abs(anchor.y) > .97;
+      label.style.left = `${(anchor.x*.5+.5)*100}%`;
+      label.style.top = `${(.5-anchor.y*.5)*100}%`;
+    });
     renderer.render(scene, camera);
     resolveReady();
     frame = requestAnimationFrame(render);
@@ -383,8 +551,10 @@ export function mountOutpost(
     cancelAnimationFrame(frame);
     observer.disconnect();
     canvas.remove();
+    workerLabels.forEach(label => label.remove());
     fallback = mountStaticMap(container, markers);
     fallback.select(selected);
+    if (timedState) fallback.updateFacilities(timedState, driving);
     if (committed) fallback.present({ type: 'settled', state: committed, phase });
     resolveReady();
   }, { once: true });
@@ -392,6 +562,7 @@ export function mountOutpost(
   frame = requestAnimationFrame(render);
   return {
     ready,
+    updateFacilities,
     select(id?: BuildingId) {
       selected = id;
       fallback?.select(id);
@@ -413,6 +584,7 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
     markers[building.id].style.setProperty('--marker-x', `${x / 9.6}%`);
     markers[building.id].style.top = `${(y - 39) / 6}%`;
   }
+  let expansionState: OutpostState | undefined;
   let selected: BuildingId | undefined;
   let phase: StormPhase = 'clear';
   let state: MissionState | undefined;
@@ -439,6 +611,31 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
     context.lineWidth = 11;
     context.strokeStyle = '#81786d';
     context.stroke();
+    if (expansionState) {
+      const { rover, workers } = expansionState.campaign;
+      const mapPoint = ([x,z]: readonly [number,number]) => [480 + x*8, 300 + z*6] as const;
+      const mark = (point: readonly [number,number], label: string, color: string) => {
+        const [x,y] = mapPoint(point);
+        context.fillStyle = color; context.fillRect(x-3,y-3,6,6);
+        context.font = '13px sans-serif'; context.fillText(label,x+6,y+4);
+      };
+      mark(locations.dock,'Dock','#9deabc');
+      mark(locations.heritage,'Apollo 12 overlook','#9adef2');
+      for (const id of rover.contacts) if (!rover.collected.includes(id)) mark(cacheSites[id].point,cacheSites[id].name,'#ffd19c');
+      mark(rover.position,'Rover','#ffd19c');
+      if (expansionState.sheltered) mark(shelter,'Shelter','#9deabc');
+      crewRoster.forEach(member => {
+        const point = workers[member.id].position;
+        if (rover.driver !== member.id && (!expansionState?.sheltered || point[0] !== shelter[0] || point[1] !== shelter[1])) mark(point,member.name.split(' ')[0],`#${member.color.toString(16)}`);
+      });
+    }
+    if (expansionState) for (const facility of expansionState.facilities) {
+      const [px, pz] = plots[facility.plot];
+      const x = 480 + px * 24, y = 300 + pz * 16;
+      context.strokeStyle = '#ffc580'; context.strokeRect(x - 22, y - 15, 44, 30);
+      context.fillStyle = '#ffffff'; context.font = '12px sans-serif';
+      context.fillText(`${constructionTypes[facility.type].name} ${Math.round(facility.progress / constructionTypes[facility.type].seconds * 100)}%`, x - 40, y - 20);
+    }
     for (const building of buildings) {
       const [x, y] = sites[building.id];
       context.fillStyle = '#292c31';
@@ -457,6 +654,7 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
   paint();
   return {
     ready: Promise.resolve(),
+    updateFacilities(state: OutpostState, _driving = false) { expansionState = state; phase = stormAt(state.elapsed, state.campaign.safetyChecked); paint(); },
     select(id?: BuildingId) { selected = id; paint(); },
     present(event: MissionEvent) {
       if ('state' in event) { state = event.state; phase = event.phase; }

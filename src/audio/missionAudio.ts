@@ -1,3 +1,4 @@
+import type { FlightCue } from '../mission/flightPresentation';
 import { hasParticleRisk } from '../mission/dailyMission';
 import type { MissionEvent } from '../mission/presentation';
 
@@ -41,10 +42,12 @@ export function mountMissionAudio() {
   let loopNodes: { source: AudioBufferSourceNode; gain: GainNode }[] = [];
   let generation = 0;
   let launched = false;
+  let paused = false;
   let activation = 0;
   let cueEpoch = 0;
   const playing = new Map<Cue, AudioBufferSourceNode>();
   const timers = new Set<number>();
+  const flightNodes = new Set<OscillatorNode>();
   const seen = new Set<string>();
 
   function remember() {
@@ -98,10 +101,10 @@ export function mountMissionAudio() {
   }
 
   async function startLoop() {
-    if (!context || !settings.enabled || document.hidden || loopNodes.length) return;
+    if (!context || !settings.enabled || document.hidden || paused || loopNodes.length) return;
     const run = generation;
     const decoded = await Promise.all(buffers);
-    if (!context || run !== generation || !settings.enabled || document.hidden || loopNodes.length) return;
+    if (!context || run !== generation || !settings.enabled || document.hidden || paused || loopNodes.length) return;
     const ctx = context;
     const startAt = ctx.currentTime + .05;
     // Keep the stem indexes stable even if an individual file is unavailable.
@@ -118,6 +121,8 @@ export function mountMissionAudio() {
   }
 
   function stopCues() {
+    for (const node of flightNodes) { node.stop(); node.disconnect(); }
+    flightNodes.clear();
     cueEpoch++;
     for (const timer of timers) clearTimeout(timer);
     timers.clear();
@@ -133,7 +138,7 @@ export function mountMissionAudio() {
     if (!launched) return;
     const attempt = ++activation;
     try {
-      if (!settings.enabled || document.hidden) {
+      if (!settings.enabled || document.hidden || paused) {
         stopCues();
         if (context?.state === 'running') await context.suspend();
         return;
@@ -144,7 +149,7 @@ export function mountMissionAudio() {
         if (attempt === activation && ctx.state !== 'running') status.textContent = 'Sound is unavailable. You can still play.';
       }, 1300);
       try { await ctx.resume(); } finally { clearTimeout(timeout); }
-      if (attempt !== activation || !settings.enabled || document.hidden) return;
+      if (attempt !== activation || !settings.enabled || document.hidden || paused) return;
       await startLoop();
     } catch {
       if (attempt === activation) status.textContent = 'Sound is unavailable. You can still play.';
@@ -176,7 +181,7 @@ export function mountMissionAudio() {
   }
 
   function later(name: Cue, ms: number) {
-    if (!settings.enabled || document.hidden) return;
+    if (!settings.enabled || document.hidden || paused) return;
     const timer = window.setTimeout(() => { timers.delete(timer); cue(name); }, ms);
     timers.add(timer);
   }
@@ -245,5 +250,30 @@ export function mountMissionAudio() {
   }
   document.addEventListener('visibilitychange', () => void updatePlayback());
   updateLevels();
-  return { start, resume: () => start(settings.enabled), present };
+  return { start, resume: () => start(settings.enabled), present,
+    pause(value: boolean) { paused = value; void updatePlayback(); },
+    flightCue(name: FlightCue) {
+      const ctx = context;
+      if (!ctx || ctx.state !== 'running' || !settings.enabled || paused || document.hidden) return;
+      const notes: Record<FlightCue, number[]> = {
+        power: [130, 196], boot: [262, 330, 392], fan: [90, 96], clearance: [392, 523],
+        ignition: [48, 56, 64, 72], staging: [110, 165], burn: [66, 82],
+        warning: [294, 262], confirmation: [330, 440], touchdown: [262, 330, 392, 523],
+      };
+      setMix([.4, 0, 0]);
+      notes[name].forEach((frequency, index) => {
+        const oscillator = ctx.createOscillator(), envelope = ctx.createGain();
+        oscillator.type = name === 'ignition' || name === 'burn' ? 'triangle' : 'sine';
+        oscillator.frequency.value = frequency;
+        const at = ctx.currentTime + index * .13;
+        envelope.gain.setValueAtTime(0, at);
+        envelope.gain.linearRampToValueAtTime(.10, at + .04);
+        envelope.gain.exponentialRampToValueAtTime(.001, at + .55);
+        oscillator.connect(envelope).connect(effectsBus);
+        flightNodes.add(oscillator);
+        oscillator.onended = () => { flightNodes.delete(oscillator); oscillator.disconnect(); envelope.disconnect(); };
+        oscillator.start(at); oscillator.stop(at + .6);
+      });
+    },
+  };
 }

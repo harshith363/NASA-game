@@ -1,5 +1,7 @@
 # Junior Astronaut Mission Trainer — survival expansion
 
+> **Historical reference.** Historical design and handoff for the seven-day daily-turn mode. The Space Station and Mars sections describe earlier proposals. See the [current game overview](docs/GAME_OVERVIEW.md) and [campaign validation](docs/CAMPAIGN_VALIDATION.md).
+
 Prepared 14 November 2026. Implementation handoff for a new chat.
 
 ## 1. Outcome and agreed sequence

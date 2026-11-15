@@ -1,5 +1,7 @@
 # Lunar Outpost prototype validation
 
+> **Historical reference.** Historical validation for the short storm drill. The scenarios and results below apply to that build. See the [current game overview](GAME_OVERVIEW.md) and [campaign validation](CAMPAIGN_VALIDATION.md).
+
 **Phase 1 implementation: complete.** Automated rule checks, production build, and browser verification passed. The usability and physical-device checks below remain pending.
 
 Run `npm test` for the deterministic rules and `npm run build` for type checking and the production bundle. The rule tests cover projections, both failure types, unaffordable drafts, both success strategies, the alternate scenario, and every combination of two plans for crew safety.

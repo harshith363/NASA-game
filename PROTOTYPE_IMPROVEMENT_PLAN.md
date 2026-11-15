@@ -1,5 +1,7 @@
 # Lunar outpost: prototype improvement plan
 
+> **Historical reference.** Historical playtest and implementation plan for the two-shift storm drill. Its balance, controls, and acceptance results describe that prototype. See the [current game overview](docs/GAME_OVERVIEW.md) and [campaign validation](docs/CAMPAIGN_VALIDATION.md).
+
 Prepared 14 November 2026 after playing the local build. **Status: Phase 1 prototype implementation complete.** The P0 and P1 work below is implemented, along with the P2 peak demand and alternate scenario. Player usability sessions and physical-device audio checks remain open; see [validation](docs/PROTOTYPE_VALIDATION.md). Preserve the existing 3D base and accessible HTML controls. Target the existing ages 7–12 audience and a 3–5 minute first session.
 
 ## 1. Playtest evidence

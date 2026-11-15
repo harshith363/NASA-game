@@ -1,21 +1,7 @@
 import * as THREE from 'three';
 
-const craters = [
-  [-19, 4, 7], [17, -10, 7], [-10, -17, 9], [5, 13, 4],
-  [20, 9, 5], [-12, 14, 3], [29, -23, 10], [-30, -12, 10], [4, -30, 12],
-];
-
-export function lunarHeight(x: number, z: number) {
-  const detail = Math.sin(x * .38 + z * .23) * Math.cos(z * .51) * .32
-    + Math.sin(x * 1.8 - z * 1.3) * .06;
-  let height = detail;
-  for (const [cx, cz, radius] of craters) {
-    const distance = Math.hypot(x - cx, z - cz) / radius;
-    if (distance < 1) height -= radius * .24 * (1 - distance * distance) ** 2;
-    height += radius * .06 * Math.exp(-((distance - .94) ** 2) * 90);
-  }
-  return height;
-}
+import { lunarHeight } from '../mission/lunarSurface';
+export { lunarHeight };
 
 function createDustTexture() {
   const canvas = document.createElement('canvas');

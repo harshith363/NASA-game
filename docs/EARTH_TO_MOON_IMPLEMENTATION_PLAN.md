@@ -1,16 +1,20 @@
 # Earth-to-Moon Flight — Implementation Plan
 
-Status: proposed implementation, 14 November 2026. This document specifies the next playable chapter; flight code has not yet been implemented.
+> **Historical reference.** Outbound flight design and implementation history. References below to a seven-day surface run, legacy journal handoff, or the old DONKI panel describe the surface build at the time. See the [current game overview](GAME_OVERVIEW.md) and [campaign validation](CAMPAIGN_VALIDATION.md).
+
+Revised 15 November 2026. A playable flight implementation now connects startup, launch, both incidents, landing and the lunar handoff. Procedural scenes, shared audio cues and bounded NASA cabin/trajectory samples are included. Release validation and cinematic polish are not yet complete; see [implementation validation](EARTH_TO_MOON_VALIDATION.md). The outpost Control Centre supports NASA DONKI lookups and opens the shelter comparison.
 
 ## 1. Product goal and challenge alignment
 
-Turn the current short arrival into a 6–8 minute, guided Earth-to-Moon journey before the seven-day survival mission. Players clear launch with Mission Control, experience liftoff from inside and outside the craft, follow a route map, resolve two resource emergencies, and land beside the existing outpost.
+Turn the current short arrival into a 7–9 minute, guided Earth-to-Moon journey before the seven-day survival mission. Players power up the spacecraft, clear launch with Mission Control, experience liftoff from inside and outside the craft, follow a route map, resolve two resource emergencies, and land beside the existing outpost.
 
 The [challenge statement](https://hackathlone.com/challenges/junior-astronaut-mission-trainer#objectives) asks children ages 7–12 to learn engineering trade-offs through outpost management. Flight is an introduction to those decisions: every repair consumes something, previews explain consequences, and crew advice helps players reason. The lunar survival chapter remains the main mission. Keep three flight resources visible and handle one incident at a time.
 
 Source review: the linked HackAthlone statement was accessible on 14 November 2026. Its linked official Space Apps challenge page returned HTTP 502; recheck that page before submission. Existing archived NASA evidence remains available in the lunar chapter.
 
-## 2. Current implementation and integration constraints
+## 2. Original implementation and integration constraints
+
+The following records the starting state before this implementation. Current delivered behavior and remaining checks are listed in `EARTH_TO_MOON_VALIDATION.md`.
 
 - `src/main.ts` mounts the outpost, mission controls, audio, and intro immediately.
 - `src/ui/flightIntro.ts` currently presents sound selection, then an arrival event and a 6.2-second timer. Resume bypasses the introduction. Reduced motion currently bypasses arrival entirely.
@@ -25,7 +29,8 @@ Source review: the linked HackAthlone statement was accessible on 14 November 20
 | Stage | Approximate play time | Experience and meaningful action | Completion gate |
 | --- | --- | --- | --- |
 | Flight briefing | 30 sec | View Earth on the launchpad, meet the existing crew, select sound or muted play. Explain fuel, battery, oxygen and the goal: reach the Moon with landing reserves. | Start flight, resume, or go directly to outpost |
-| Launch control | 45 sec | Tower calls for power, cabin, and navigation checks. Player opens three simple system cards, runs checks, and sends GO. A failed check gives a specific repair prompt. | All checks complete; explicit launch authorization |
+| Spacecraft startup | 60–90 sec | From a cold cockpit, the player connects ground power, powers the avionics, starts life support, and aligns navigation. The panel and crew respond to each action. | All systems online and navigation fault cleared |
+| Launch control | 30 sec | Tower reviews the completed checks. The player transfers to onboard power and requests GO. | Tower clearance and explicit launch authorization |
 | Countdown and ascent | 30 sec | T−10 countdown, ignition, tower flyby, cockpit vibration, clouds giving way to Earth’s curved horizon, stage separation. Captions follow each callout. | Cinematic ends or is skipped |
 | Earth orbit and departure | 45 sec | Map explains a parking orbit and departure burn. Player checks projected fuel and authorizes the burn. See the craft leave Earth orbit and coast. | Departure committed |
 | Engine challenge | 60–90 sec | A correction-burn cooling fault triggers a calm amber warning. Inspect the affected system, consult crew, compare repair and backup options. Exterior view shows the affected thruster. | Valid recovery committed; result acknowledged |
@@ -36,15 +41,24 @@ Source review: the linked HackAthlone statement was accessible on 14 November 20
 
 This is a fictional, compressed mission architecture. Show “Simulated journey · time compressed” and “Route diagram · not to scale.” Establish Earth launch control separately from the lunar outpost’s Control Tower. Avoid implying the depicted route is an actual Artemis flight plan.
 
-### Launch script
+### Playable spacecraft startup
 
-1. Tower: “Flight crew, begin your launch checks.”
-2. Aya: “Power ready.” Mateo: “Cabin air ready.” Noah: “Route confirmed.” Each line follows its completed check.
-3. Tower: “All systems GO. You may start the countdown.” Player selects **Authorize launch**.
-4. “T minus ten … three, two, one … liftoff!” Captions and a visible counter work without audio.
-5. Pilot: “We’re climbing. Next stop: Earth orbit.”
+Open on the seated cockpit POV. Through the window, the launch tower is visible. Inside, the main displays are dark and the first available control is highlighted. Offer a crew hint at each step. Show controls as labeled buttons with a short explanation and status beside each.
 
-Offer **Hold countdown**, **Continue countdown**, and **Skip animation**. Holding or skipping never spends resources twice. After ignition, pause freezes the training sequence; do not label it a real launch hold.
+| Player action | Prerequisite | Feedback |
+| --- | --- | --- |
+| **Connect ground power** | Start of sequence | The power bus lights up. Aya explains that the pad supplies electricity while the crew prepares. |
+| **Power avionics** | Ground power connected | Flight displays boot and show the route, countdown status, and next check. |
+| **Start life support** | Power bus online | Mateo calls out cabin pressure, oxygen supply, and CO₂ removal as separate checks. |
+| **Align navigation** | Avionics online | The first alignment flags a mismatched training waypoint. Compare the tower’s route card with the onboard card and select **Load approved route**, then **Confirm alignment**. |
+| **Switch to onboard power** | Cabin and route both ready | The bus stays online and Aya confirms the handover. The player can now request launch clearance. |
+| **Request GO** | Onboard power confirmed | Tower reads back the completed checks. **Authorize launch** becomes available. |
+
+Once avionics are online, life support and navigation can be completed in either order. Locked controls explain the missing prerequisite. Show each switch result as text as well as through cockpit lighting or sound. Startup covers a guided simulation of system dependencies. Ground power keeps the initial checks outside the flight battery budget. The existing ascent cost includes the first onboard spend.
+
+### Countdown and ascent
+
+The player selects **Authorize launch** after Tower clearance. Run a captioned T−10 countdown with **Hold countdown** and **Continue countdown**. Closing the tab or pausing preserves completed checks and clearance. Resuming a partially shown countdown starts the presentation from T−10. Ignition commits ascent costs once, then the sequence cuts between the cockpit, launch tower, and exterior staging. **Skip animation** ends the current visual beat after its gameplay action is committed. It cannot supply a startup action, clearance, or ignition authorization.
 
 ## 4. Visual design and camera direction
 
@@ -60,13 +74,13 @@ Desktop composition:
 
 Mobile: scene above a scrollable console, three compact resource meters, full-width decision controls, expandable route map. Keep a visible path to the primary action at 360px width, landscape, and 200% zoom. Use at least 44px touch targets.
 
-Camera sequence: launchpad wide → tower tracking → cockpit ascent → exterior separation → Earth-window POV → transit exterior → Moon-window POV → descent cockpit → existing outpost camera. Use authored camera poses and short eased transitions. Manual view choice persists until the player chooses cinematic camera mode again. No automatic camera switch while reading an incident.
+Camera sequence: cold cockpit → powered cockpit → launchpad wide → tower tracking → cockpit ascent → exterior separation → Earth-window POV → transit exterior → Moon-window POV → descent cockpit → existing outpost camera. Use authored camera poses and short eased transitions. Manual view choice persists until the player chooses cinematic camera mode again. No automatic camera switch while reading an incident.
 
 Reduced motion uses static poses, no shake, no star streaks, no flashing warnings, and brief fades. It preserves every gameplay decision. Provide an independent camera-shake toggle for standard motion. The static fallback retains the route, captions, checklist, decisions, and outcomes.
 
 ## 5. Route map
 
-Implement an accessible SVG schematic with Earth, departure orbit, transfer arc, Moon orbit, landing site, current craft marker, completed segments, and upcoming checkpoints. Use the same phase data as the scene and HUD. Mark engine and oxygen incidents on the route; selecting completed markers opens their reports without changing state.
+Implement an accessible SVG schematic with Earth and its prelaunch checkpoint, departure orbit, transfer arc, Moon orbit, landing site, current craft marker, completed segments, and upcoming checkpoints. Use the same phase data as the scene and HUD. Mark engine and oxygen incidents on the route; selecting completed markers opens their reports without changing state.
 
 Expand view shows current phase, next objective, schematic progress, and simulated mission time. Do not show invented live telemetry, exact trajectory distances, or physically accurate orbital predictions. NASA’s average Earth–Moon distance can appear as a separately sourced reference fact. Label a phase-based progress bar “Journey stages,” not distance traveled.
 
@@ -105,9 +119,9 @@ Later replay variants: antenna alignment with a power/time trade-off; electrical
 
 ## 7. Flight state, presentation, and files
 
-Proposed state fields: `runId`, `scenarioId`, `rulesVersion`, `phase`, `resources`, `checklist`, `actionJournal`, `pendingReport`, `outcome`, `handoffStatus`. Keep camera preference, caption display, and cinematic playhead outside canonical mission rules.
+Proposed state fields: `runId`, `scenarioId`, `rulesVersion`, `phase`, `resources`, `startupSystems`, `actionJournal`, `pendingReport`, `outcome`, `handoffStatus`. Keep camera preference, caption display, and cinematic playhead outside canonical mission rules.
 
-Phases: `briefing → checks → launch → earthOrbit → departure → engineIncident → coast → oxygenIncident → lunarOrbit → descent → touchdown → debrief → outpost`. Each phase accepts an explicit finite set of actions. A committed action returns the next state, resource deltas, explanatory report, and presentation events. Use action IDs and phase guards to reject duplicate submissions.
+Phases: `briefing → startup → clearance → countdown → ascent → earthOrbit → departure → engineIncident → coast → oxygenIncident → lunarOrbit → descent → touchdown → debrief → outpost`. Each phase accepts an explicit finite set of actions. A committed action returns the next state, resource deltas, explanatory report, and presentation events. Use action IDs and phase guards to reject duplicate submissions.
 
 | File | Responsibility |
 | --- | --- |
@@ -117,7 +131,7 @@ Phases: `briefing → checks → launch → earthOrbit → departure → engineI
 | `src/mission/flightPersistence.ts` | Validated journal replay and flight checkpoint storage |
 | `src/mission/flightPresentation.ts` | Typed flight-only visual/audio events |
 | `src/scenes/FlightScene.ts` | Earth, Moon, launchpad, rocket, transit craft, camera poses and disposal |
-| `src/ui/flightControls.ts` | HUD, checklists, previews, reports, crew advice and pause |
+| `src/ui/flightControls.ts` | Cockpit startup controls, HUD, previews, reports, crew advice and pause |
 | `src/ui/flightRoute.ts` | SVG route and accessible checkpoint list |
 | `src/ui/flightIntro.ts` | Entry menu and resume routing, replacing the timer-only intro |
 | `src/audio/missionAudio.ts` | Flight cue support and shared sound preferences |
@@ -151,7 +165,7 @@ Use procedural low-poly Earth/Moon forms and spacecraft geometry initially. Any 
 
 Use pooled exhaust particles, bounded object counts, device-pixel-ratio limits, and no expensive postprocessing by default. Dispose scene-owned materials, textures, geometries, observers, listeners, and animation loops on exit. Target smooth 30fps on a representative mobile device and 60fps on desktop; measure actual hardware and report untested targets honestly.
 
-Add ignition, rumble, staging, burn, soft warning, confirmation, and touchdown cues through the existing audio preferences. Optional recorded radio lines always have captions. Launch sound requires the existing user gesture; muted playback is fully functional. Keep music lower during dialogue. Do not let audio loading or playback failure block progress.
+Add power-on, avionics boot, life-support fan, tower clearance, ignition, rumble, staging, burn, soft warning, confirmation, and touchdown cues through the existing audio preferences. Optional recorded radio lines always have captions. Launch sound requires the existing user gesture; muted playback is fully functional. Keep music lower during dialogue. Do not let audio loading or playback failure block progress.
 
 ## 10. Science and evidence
 
@@ -163,22 +177,38 @@ Keep verified facts separate from invented flight budgets, incident timing, and 
 
 Before writing detailed launch/burn explanations, verify them against a suitable NASA mission reference and record that reference in `flightReferences.ts`. Do not derive real fuel consumption, oxygen endurance, or spacecraft procedures from the proposed training-unit model. Ship all essential scenario data locally; external sources are optional explanation links, not runtime dependencies.
 
+### Control Centre and additional NASA datasets
+
+The outpost tower’s Control Centre already offers a browser request to NASA CCMC DONKI for the original training event or the last 30 UTC dates. It displays detection time, instrument name, source link, and lookup time. The bundled archive remains available offline. Its shelter comparison uses the existing simulated power, air, and crop rules. Recent catalog events provide context and stay outside launch clearance, resource budgets, and radiation exposure calculations. [NASA CCMC DONKI](https://ccmc.gsfc.nasa.gov/tools/DONKI/)
+
+| Dataset | Concrete use in the game | Integration approach and limit |
+| --- | --- | --- |
+| [NASA OSDR Environmental Data App](https://visualization.osdr.nasa.gov/eda/) | At startup, show a short ISS cabin CO₂ trace when Mateo explains the scrubber. Ask the player which system removes CO₂ before confirming life support. | Bundle a small downloaded slice with mission, recording location, timestamps, and source units. ISS cabin readings provide an example for the lesson. Fictional oxygen and cabin checks use training values. |
+| [NASA Artemis II flight trajectory](https://svs.gsfc.nasa.gov/5632) and [lunar flyby POV](https://svs.gsfc.nasa.gov/5633) | On the route map, add an optional **Compare with Artemis II** view. Use the flyby POV as camera reference. | Bundle sampled flight-derived trajectory points after checking the frame and time metadata. Draw the historical flyby and Earth return with their own legend. The training craft’s landing route is a separate schematic. |
+| [NASA OSDR Veggie lettuce study OSD-267](https://osdr.nasa.gov/bio/repo/data/studies/OSD-267) | In the Farm, use the study’s 16 hours light and 8 hours dark schedule to explain why Imani budgets power for grow lights. | Bundle the protocol metadata with the study accession, crop, and ISS setting. Keep actual growing times separate from the compressed game harvest. |
+| [NASA Moon Trek layers](https://trek.nasa.gov/moon/) and [LRO instrument overview](https://science.nasa.gov/wp-content/uploads/2024/01/lro-space-science-paper.pdf) | Compare two candidate outpost sites, then preview the battery impact of different solar exposure and landing terrain. | Pick a specific published illumination or elevation product and clip a small sample. Record location, resolution, time coverage, and attribution. Map the comparison to simplified scenario modifiers after balancing both routes. |
+| [NASA RadLab data API](https://visualization.osdr.nasa.gov/radlab/gui/data-api/) | Show a measured radiation dose-rate trace alongside the shelter drill. The chart teaches what the detector measures while the player decides whether to spend battery on ventilation. | Bundle a bounded query for a named detector and mission. Preserve the original units and measurement location. Keep it separate from the DONKI particle event and the outpost’s simulated exposure. |
+
+The official Space Apps resources URL was inaccessible during this review. The local challenge page’s resource list and NASA’s own dataset pages were available. [Challenge resource list](https://hackathlone.com/challenges/junior-astronaut-mission-trainer#resources)
+
+Start with the OSDR cabin trace for the startup lesson and Artemis II for route comparison. The Farm and lunar site data deepen existing power and food decisions. For each added source, record the exact file or request, date range, units, processing steps, and credit. Verify both the imported sample and the explanation shown to players before shipping it.
+
 ## 11. Implementation milestones and exit checks
 
-1. **Flight rules and integration contract.** Add typed phases, costs, previews, incidents, report acknowledgment, deterministic replay, and legacy-save fixtures. Exit: every standard route lands, duplicate/out-of-order actions are rejected, existing lunar tests pass.
-2. **Playable static vertical slice.** Add the flight shell, SVG map, launch checklist, both incidents, report, and lunar handoff using the shared design. Exit: a keyboard-only muted run completes end to end without WebGL; flight/outpost resume and bypass work.
-3. **Launch and POV scenes.** Build launchpad, rocket, separation, orbit, transit and approach; implement cockpit/exterior/map views and reduced-motion equivalents. Exit: each logical phase has an appropriate visual, cinematic skip preserves outcomes, and outpost arrival runs once.
+1. **Flight rules and integration contract.** Add startup prerequisites, typed phases, costs, previews, incidents, report acknowledgment, deterministic replay, and legacy-save fixtures. Exit: every standard route lands, duplicate/out-of-order actions are rejected, existing lunar tests pass.
+2. **Playable static vertical slice.** Add the flight shell, SVG map, playable cold startup, launch clearance, both incidents, report, and lunar handoff using the shared design. Exit: a keyboard-only muted run completes end to end without WebGL; flight/outpost resume and bypass work.
+3. **Launch and POV scenes.** Animate cockpit power-up and build launchpad, rocket, separation, orbit, transit and approach; implement cockpit/exterior/map views and reduced-motion equivalents. Exit: each logical phase has an appropriate visual, cinematic skip preserves outcomes, and outpost arrival runs once.
 4. **Audio, crew narrative, and persistence hardening.** Add captioned radio, cue mixing, checkpoint retry, failure recovery, cross-tab detection, and interrupted-handoff recovery. Exit: reload during each phase and report reproduces the correct state without duplicate costs.
-5. **Balance and release validation.** Complete responsive and accessibility checks, representative-device performance checks, NASA attribution, asset register, build and hosted smoke tests. Exit: a fresh player can explain one repair trade-off and reach the outpost without coaching beyond in-game guidance.
+5. **Balance and release validation.** Complete responsive and accessibility checks, representative-device performance checks, NASA attribution, the cabin trace, Artemis II route comparison, asset register, build and hosted smoke tests. Exit: a fresh player can explain one repair trade-off and reach the outpost without coaching beyond in-game guidance.
 
 Complete each milestone before expanding its scope. Milestone 2 provides the first fully playable implementation; milestones 3–5 deliver the requested cinematic quality and release readiness.
 
 ## 12. Verification and definition of done
 
-Automated rules/persistence checks: four standard decision combinations, mandatory reserve boundaries, invalid actions, repeated clicks, report acknowledgment, corrupt/unsupported saves, legacy lunar v1/v2 restoration, checkpoint retry, unavailable storage, stale tabs, and every handoff write boundary.
+Automated rules/persistence checks: startup action order, failed and corrected navigation alignment, reload after each switch, clearance gating, hold and reload before ignition, four standard decision combinations, mandatory reserve boundaries, invalid actions, repeated clicks, report acknowledgment, corrupt/unsupported saves, legacy lunar v1/v2 restoration, checkpoint retry, unavailable storage, stale tabs, and every handoff write boundary.
 
 Run `npm test` and `npm run build`. Browser checks cover complete flight → outpost day one, existing outpost resume, outpost retry, flight reload at each phase, all view selectors, animation skip, chapter bypass, mute, audio failure, reduced motion changed midflight, pause/tab hide, WebGL failure/context loss, mobile portrait/landscape, keyboard focus, and screen-reader announcements. Announce phase/report changes rather than every animation frame; use text plus icons for warnings.
 
 Record results in `docs/EARTH_TO_MOON_VALIDATION.md` during implementation. Distinguish automated checks, manual browser checks, device measurements, and outstanding child playtesting.
 
-Done means the player can launch with Control Tower guidance, see cockpit and exterior shots, track the route, resolve meaningful engine and oxygen incidents, review the consequences, land, and continue the existing lunar game. The experience retains the app’s design language, works without sound or WebGL, restores saved progress, and makes its scientific simplifications explicit.
+Done means the player can power up the spacecraft from the cockpit, resolve the startup fault, obtain Control Tower clearance and launch, see cockpit and exterior shots, track the route, resolve meaningful engine and oxygen incidents, review the consequences, land, and continue the existing lunar game. The experience retains the app’s design language, works without sound or WebGL, restores saved progress, and makes its scientific simplifications explicit.
