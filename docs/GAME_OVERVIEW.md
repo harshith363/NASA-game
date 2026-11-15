@@ -1,6 +1,6 @@
 # Junior Astronaut Mission Trainer — Game overview
 
-Junior Astronaut Mission Trainer is a browser-based spaceflight and lunar survival game. The player guides a five-person crew from Earth to the Moon and manages a small outpost through two simulated solar particle storms. The campaign continues with staffed facilities, lunar rover expeditions, and a playable return to Earth after 15 full mission days.
+Junior Astronaut Mission Trainer is a browser-based spaceflight and lunar survival game. The player guides a five-person crew from Earth to the Moon and manages a small outpost through two simulated solar particle storms and a drawn equipment incident. The campaign continues with staffed facilities, lunar rover expeditions, and a playable return to Earth during recurring departure windows.
 
 This overview describes the current playable game. Some older project documents describe the former daily-turn prototype.
 
@@ -12,18 +12,18 @@ From the chapter menu, start or resume the **Earth-to-Moon flight**, or select *
 
 The flight begins on the launchpad. Connect ground power, start avionics and life support, load and confirm the approved navigation route, switch to onboard power, and request clearance. Authorizing launch starts a countdown. The flight proceeds through ascent, Earth orbit, and a departure burn.
 
-Two incidents put reserves under pressure. A cooling warning offers a choice between running the backup pump and spending more fuel on backup thrusters. An oxygen supply leak must first be isolated, after which the player can power a repair tool or use a reserve bypass. The flight console shows expected resource costs before committing a command. The route view and exterior camera show the mission stage.
+Two incidents put reserves under pressure. A cooling warning offers a choice between running the backup pump and spending more fuel on backup thrusters. An oxygen supply leak must first be isolated, after which the player can power a repair tool or use a reserve bypass. The flight console shows expected resource costs before committing a command. The route view and exterior camera show the mission stage. The Launch and Moon landing commands have help you can open before committing a command.
 
 The final stretch includes lunar braking, a landing checklist, powered descent and touchdown. The landing screen shows the remaining flight resources and offers **Enter lunar outpost** directly. Checkpoint retry lets the player revisit a decision. The flight settings menu includes pause, sound, and reduced motion.
 
 ### Timed lunar outpost
 
-The outpost starts paused. At 1×, one mission day passes in 60 real seconds. The clock has a play/pause button and a speed button that cycles through **1×, 2×, and 4×**. Switching browser tabs pauses the run. The HUD shows battery, food, water, oxygen, and construction materials. Falling resources are red, and rising resources are green.
+The outpost starts paused. At 1×, one mission day passes in 60 real seconds. The clock has a play/pause button and a speed button that cycles through **1×, 2×, and 4×**. Switching browser tabs pauses the run. The HUD shows current power, food, water, oxygen, and materials, with signed rates for resources that change over time.
 
 | Current control | What it does |
 | --- | --- |
 | Farm | Switch greenhouse lighting and water recycling on or off. |
-| Mission Control Tower | Manage shelter and reserve oxygen, or select **Request telemetry** for five simulated readings and ten NASA/NOAA readings when available. |
+| Mission Control Tower | See crew assignments, job progress and cooldowns, manage shelter and reserve oxygen, or select **Request telemetry** for five simulated readings and ten NASA/NOAA readings when available. |
 | Communications Centre | Request a storm forecast or assign a tower radar survey to reveal nearby caches. |
 | Build | Choose an available plot and spend materials on a facility. Select an occupied plot to inspect it or toggle a completed facility. |
 
@@ -35,7 +35,7 @@ There are six construction plots and 100 starting materials. Two available astro
 | Battery bank | 20 materials | 0.42 days | Adds 20 units of empty storage capacity. |
 | Greenhouse | 35 materials | 0.83 days | Produces 3 food per day with lights, power, and water. Uses 2 power and 0.5 water per day. |
 
-A typical run starts with a solar array and greenhouse. By default the first warning comes on **Day 4**, with a storm from **Day 5 to Day 7**. A second storm runs from Day 11.50 to Day 12.50. Warning, arrival, and clearance pause the clock. Recall early enough for each astronaut to get inside. Exposure during a storm or exhaustion of food, water, or oxygen interrupts the mission. Running out of battery triggers an alert and puts the crew on stored oxygen.
+A typical run starts with a solar array and greenhouse. Each new outpost draws the timing of two storms and saves it for the run. Warning, arrival, and clearance pause the clock. The warning opens a briefing with a crew recall action. A solar array or recycler incident occurs between the storms. Recall early enough for each astronaut to get inside. Exposure during a storm or exhaustion of food, water, or oxygen interrupts the mission. Running out of battery triggers an alert and puts the crew on stored oxygen.
 
 ### The crew
 
@@ -43,13 +43,13 @@ The five specialists are **Aya Chen** (power engineering), **Mateo Silva** (life
 
 ### Lunar rover and historical exhibit
 
-Open Rover, assign an available driver, and steer with WASD, arrow keys, or on-screen buttons. Driving runs at 1×. Park and leave the driving view to restore fast-forward. Acceleration and steering are continuous. Crater slopes and rough ground affect speed, traction, energy use, and wheel suspension. The route display shows bearing, distance, and estimated charge to return. Find four caches across the expanded map with a Communications survey or a rover radar sweep. Bring loaded cargo back to the dock to bank it. Charge from base power at the dock, or request a timed recovery if the rover is stranded.
+Select **Rover dock** on the map, assign an available driver, and steer with WASD, arrow keys, or on-screen buttons. Driving runs at 1×. Park and leave the driving view to restore fast-forward. Acceleration and steering are continuous. Crater slopes and rough ground affect speed, traction, energy use, and wheel suspension. The route display shows bearing, distance, and estimated charge to return. Find seven caches across the expanded map with a Communications survey or a rover radar sweep. Bring loaded cargo back to the dock to bank it. Charge from base power at the dock, or request a timed recovery if the rover is stranded.
 
-The Apollo 12 and Surveyor 3 overlook unlocks a short history exhibit. Its setting and the nearby recoverable supplies are fictional. The exhibit links to [NASA’s Apollo 12 mission history](https://www.nasa.gov/missions/apollo/apollo-12-the-pinpoint-mission/).
+The Apollo 12 and Surveyor 3 overlook unlocks a history exhibit. Three geology stops inspired by Apollo 15, 16, and 17 offer archive photos and specimens that can be delivered at the dock. Its setting and the nearby recoverable supplies are fictional. The exhibit links to [NASA’s Apollo 12 mission history](https://www.nasa.gov/missions/apollo/apollo-12-the-pinpoint-mission/).
 
 ### Departure and splashdown
 
-After **15 full mission days**, use Departure to check the crew, dock the rover, and load ship reserves. If the checklist is incomplete, the surface mission can continue. Boarding opens a playable return flight with lunar liftoff, an Earth transfer burn, reentry alignment, parachute deployment, and ocean splashdown. The return shares the outbound layout, trajectory map, and 3D camera. The debrief reports crew recovery, mission duration, materials delivered, and the historic site visit. It assigns a score out of 100 for survival and return, outpost reserves, sustainable operations, and exploration. A lost run opens a centered explanation and retry dialog. See the [outpost guide](TIMED_OUTPOST.md#depart-and-score-the-mission) for the rubric.
+Select **Departure** at the lander to prepare at any time. Boarding is possible on Days 13–15, 28–30, and the final three days of each later 15-day cycle. If you miss a window, keep the surface mission running until the next opening. Boarding opens a playable return flight with lunar liftoff, an Earth transfer burn, reentry alignment, parachute deployment, and ocean splashdown. The return shares the outbound layout, trajectory map, and 3D camera. The debrief reports crew recovery, mission duration, the departure window, the incident response, materials delivered, landmarks visited, and specimens logged. It assigns a score out of 100 for survival and return, outpost reserves, sustainable operations, and exploration. A lost run opens a centered explanation and retry dialog. See the [outpost guide](TIMED_OUTPOST.md#depart-and-score-the-mission) for the rubric.
 
 ## Science, visuals, and access
 

@@ -1,4 +1,7 @@
-import { missionScore, type OutpostState } from '../mission/outpostSimulation';
+import { departureWindow } from '../mission/lunarCampaign';
+import { landmarkIds, lunarLandmarks } from '../data/lunarLandmarks';
+import { cleaningPower, impactParts } from '../mission/lunarHazards';
+import { missionDay, missionScore, outpostIncident, type OutpostState } from '../mission/outpostSimulation';
 
 export function renderMissionScore(host: HTMLElement, state: OutpostState) {
   const score = missionScore(state);
@@ -21,6 +24,31 @@ export function renderMissionScore(host: HTMLElement, state: OutpostState) {
     list.append(label, points, detail);
   }
   host.replaceChildren(heading, progress, list);
+  const { specimens, heritage } = state.campaign.rover;
+  const visited: string[] = landmarkIds.filter(id => specimens[id]).map(id => lunarLandmarks[id].name);
+  if (heritage) visited.push('Apollo 12 and Surveyor 3 overlook');
+  const delivered = landmarkIds.filter(id => specimens[id] === 'delivered').map(id => lunarLandmarks[id].sample);
+  if (visited.length) {
+    const exploration = document.createElement('p');
+    exploration.textContent = `Landmarks visited: ${visited.join(', ')}. ${delivered.length ? `Specimens delivered: ${delivered.join(', ')}.` : 'Specimens delivered: none.'}`;
+    list.after(exploration);
+  }
+  const incident = outpostIncident(state);
+  if (incident) {
+    const report = document.createElement('p');
+    const cost = incident.partsReserved ? ` −${impactParts} materials reserved for the repair.`
+      : incident.type === 'dust' && incident.resolvedAt !== undefined ? ` −${cleaningPower} power for cleaning.` : '';
+    report.textContent = `${incident.title} on ${missionDay(incident.tick)} · ${incident.penalty}. ${incident.resolvedAt === undefined
+      ? 'Equipment still affected at the end of surface operations.'
+      : `${incident.result} on ${missionDay(incident.resolvedAt)}.`}${cost}`;
+    heading.after(report);
+  }
+  const departureTick = state.campaign.flight?.departureTick;
+  if (departureTick !== undefined) {
+    const departure = document.createElement('p');
+    departure.textContent = `Departed ${missionDay(departureTick)} during window ${departureWindow(departureTick).cycle}.`;
+    heading.after(departure);
+  }
 }
 
 export function mountMissionDialog(host: HTMLElement, restart: () => void, dismiss: () => void) {

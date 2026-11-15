@@ -23,10 +23,14 @@ export const cacheSites = {
   ridge: { name: 'High Ridge cache', point: [39, -23], materials: 35, sector: 'northeast beyond the crater rim' },
   flats: { name: 'South Flats cache', point: [26, 33], materials: 25, sector: 'southeast past the low basin' },
   basin: { name: 'Shadow Basin cache', point: [-42, -20], materials: 50, sector: 'northwest beyond the overlook' },
+  west: { name: 'West Traverse cache', point: [-7, 15], materials: 15, sector: 'southwest of the dock' },
+  shoulder: { name: 'North Shoulder cache', point: [11, -16], materials: 20, sector: 'north of the base toward North Ray' },
+  pass: { name: 'Southwest Pass cache', point: [-33, 25], materials: 25, sector: 'far southwest past Genesis Ridge' },
 } as const;
 export type CacheId = keyof typeof cacheSites;
 export const cacheIds = Object.keys(cacheSites) as CacheId[];
 export const cacheTotal = cacheIds.reduce((total, id) => total + cacheSites[id].materials, 0);
+export const explorationMaterialTarget = 150;
 export const radarRange = 27;
 
 export function groundSlope(x: number, z: number, heading: number) {

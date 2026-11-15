@@ -18,7 +18,7 @@ OpenAI Codex drew these assets for the Lunar crew milestone. The graphics use or
 | --- | --- |
 | `crew-aya.webp`, `crew-mateo.webp`, `crew-imani.webp`, `crew-leena.webp`, `crew-noah.webp` | 136 × 136 helmet portraits with the same accent colors as the five outpost models. |
 | `particle-alert.gif` | 640 × 264 cutaway and instrument illustration. The 38 frames loop over about 4.2 seconds. File size is about 102 KiB. |
-| `particle-alert-poster.webp` | Still frame showing the high reading and the crew inside the shelter. Used by the legacy storm briefing for reduced motion, pause, and image fallback. |
+| `particle-alert-poster.webp` | Still frame showing the high reading and the crew inside the shelter. Used by the timed and legacy storm briefings for reduced motion, pause, and image fallback. |
 
 The historical particle observation is available through the [NASA DONKI archive](https://ccmc.gsfc.nasa.gov/DONKI/events/30717/1/). NASA describes the use of shielding for exposure protection in [How NASA Will Protect Astronauts From Space Radiation at the Moon](https://science.nasa.gov/science-research/heliophysics/how-nasa-will-protect-astronauts-from-space-radiation-at-the-moon/).
 
@@ -40,9 +40,19 @@ Source metadata and input digests are in the JSON files. Reproduction script: `s
 ## Timed surface assets
 
 - [Outpost scene](../src/scenes/OutpostScene.ts) and [facility models](../src/scenes/campaignModels.ts) create the terrain props, construction states, rover chassis, wheels, suspension, cache beacons, and a stylized Surveyor-inspired model. [Lunar terrain](../src/scenes/lunarTerrain.ts) generates its own dust texture. The game uses an invented topography and supply locations.
-- [Game styles](../src/styles.css) define the timed campaign’s amber overlay and moving particle streaks. The earlier GIF and poster remain in the repository for the historical storm briefing. In the timed campaign reduced motion uses a static overlay.
+- [Game styles](../src/styles.css) define the timed campaign’s amber overlay and moving particle streaks. The timed storm briefing uses the illustration GIF and poster beside the archived observation. In the timed campaign reduced motion uses a static overlay.
 - The [Apollo 12 and Surveyor 3 exhibit](../src/ui/campaignControls.ts) uses original HTML and procedural scene elements. Its mission-history reference is [NASA’s Apollo 12 overview](https://www.nasa.gov/missions/apollo/apollo-12-the-pinpoint-mission/).
 
 ## On-demand telemetry
 
 NASA and NOAA values in the Control Tower are fetched at runtime, with source and timestamp labels. They are separate from the bundled archival samples and fictional mission variables. See the [telemetry reference](TELEMETRY.md) for providers, units, normalization, and fallback behavior.
+
+## Apollo geology exhibit photographs
+
+| Bundled file | Credit and archive | Use |
+| --- | --- | --- |
+| `public/media/apollo15-genesis.webp` | NASA, AS15-86-11671. [Apollo 15 at Hadley–Apennine](https://www.nasa.gov/history/50-years-ago-apollo-15-on-the-moon-at-hadley-apennine/) | Genesis Rock on the surface before collection at Spur Crater. |
+| `public/media/apollo16-north-ray.webp` | NASA, AS16-116-18607. [Apollo 16 at Descartes](https://www.nasa.gov/history/apollo-16-on-the-moon-at-descartes/) | Charles Duke and the rover at North Ray Crater. |
+| `public/media/apollo17-shorty.webp` | Eugene Cernan, Apollo 17 Crew / NASA. [NASA Science APOD archive](https://science.nasa.gov/image-article/apod-2015-august-2-apollo-17-at-shorty-crater/) | Harrison Schmitt and the rover beside Shorty Crater. |
+
+The credited NASA photographs appear inside educational exhibits and were resized and encoded as WebP for offline play. [NASA images and media guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/)

@@ -6,32 +6,22 @@ Verified against the workspace on **15 November 2026**. This document covers the
 
 | Command | Result | Coverage |
 | --- | --- | --- |
-| `npm test` | 45 passed, 0 failed | Outbound branching and saves, timed construction and storms, crew and shelter, rover handling and radar, departure and score, and telemetry parsing. Includes regression checks for older game rules. |
-| `npm run build` | Passed | Strict TypeScript check and production build. Vite flagged the approximately 640 kB minified JavaScript bundle for size. |
+| `npm test` | 54 passed, 0 failed | Outbound branching and saves, timed construction and storms, crew and shelter, rover handling and radar, departure and score, and telemetry parsing. Includes regression checks for older game rules. |
+| `npm run build` | Passed | Strict TypeScript check and production build. Vite flagged the approximately 671 kB minified JavaScript bundle for size. |
 
 - [Outbound flight rules](../tests/flightMission.test.mjs) cover launch checks, emergency choices, checkpoints, and landing reserves. [Flight persistence](../tests/flightPersistence.test.mjs) covers journal validation, handoff recovery, and independent legacy journals.
-- [Timed outpost tests](../tests/outpostSimulation.test.mjs) cover construction, storm boundaries, a 15-day successful run through splashdown, save restoration, departure blockers, and the score. They also cover charge use, terrain-based movement substeps, rescue, radar discovery and cooldown, one-time cache recovery, and migration of older rover saves.
+- [Timed outpost tests](../tests/outpostSimulation.test.mjs) cover construction, both departure windows, exact boundary ticks, missed-window survival, and legacy return saves. Fixed draws cover every incident at the earliest and latest storm bounds at 1×, 2×, and 4×. Rover checks cover the new routes, radar and cargo limits, sample collection, dock delivery, tow recovery, and older rover saves.
 - [Telemetry parsing](../tests/telemetry.test.mjs) verifies the Horizons observer CSV parser and its conversions to kilometers and seconds using a response fixture. That test runs without the external network.
 
-## Browser smoke checks recorded during implementation
+## Browser checks
 
-| Area | Observed |
+| Setup | Verified |
 | --- | --- |
-| Surface controls | Playback and speed cycling, construction and resource updates, editable facility settings retained after reload. |
-| Crew and departure | Active job status and named crew assignments. The detailed checklist distinguished a driver still aboard, active jobs, and each supply requirement. |
-| Rover | The on-screen driving control moved the rover and drained charge. A radar sweep revealed East Rim as a waypoint. Parking with the rover still deployed restored 4× playback. |
-| Storms and dialogs | Warning pause, peak particle animation, reduced-motion static effect, centered loss report with score, and in-game restart confirmation with Cancel. |
-| Control Tower | A local preview displayed five simulated readings and all ten external readings, with sources and UTC timestamps. Availability can vary by provider and time. |
-| Outbound flight | A browser flight from startup through touchdown opened Day 1 via **Enter lunar outpost**. The chapter menu then offered both the landed outpost and the separate existing save. See the [outbound flight validation](EARTH_TO_MOON_VALIDATION.md) for earlier recovery walkthroughs. |
+| Desktop Chrome, static-map fallback | Played from launch to splashdown through both storms, a dust incident, an East Rim collection and tow, and a reload during return. Tested command help by hover and keyboard. The test advanced Chrome's clock to shorten the wait between surface events. |
+| Desktop Chrome, second departure window | Resumed the first window's surface state via the direct-outpost entry, passed the Day 16 closing at 4×, verified that boarding was disabled and that a visibility change froze time, then departed on Day 28 and reached splashdown. |
+| Desktop Chrome, WebGL | Opened Rover and Departure from their map markers and verified focus returned to each marker on close. |
+| Mobile Chrome touch emulation, static-map fallback | Checked the five resources, touch and keyboard navigation, the reduced-motion storm poster, recall and reload acknowledgement, and opening and reopening a geology exhibit after sample collection. A warning interrupted driving and remained readable with both illustration assets blocked. |
 
-These are feature checks from local browser sessions. Automated tests cover the complete surface-to-splashdown sequence. A single uninterrupted browser playthrough of the current full campaign has yet to be recorded.
-
-## Release checks to run
-
-- Play through outbound flight, both surface storms, cache recovery, departure, and return in a single browser session. Reload once during surface work, once while deployed, and once after a return command.
-- Check full keyboard and touch navigation on representative desktop and mobile devices. Include reduced motion, narrow layouts, fullscreen, and the static map when WebGL is unavailable.
-- Measure frame pacing and memory use during rover driving and chapter transitions on target hardware.
-- Test production hosting, upstream timeouts, stale telemetry labels, and serverless failure. Check that local mission readings continue to work when upstream requests fail.
-- Check storage denial and quota errors in the browser. Test build size and hosted function behavior before any release.
+A first-time player observation and checks on physical mobile devices remain open. Hosted telemetry, denied storage, and performance on target hardware were outside these local browser checks.
 
 Historical records: [prototype storm drill](PROTOTYPE_VALIDATION.md), [seven-day Lunar milestone](LUNAR_SURVIVAL_VALIDATION.md), and [outbound flight milestone](EARTH_TO_MOON_VALIDATION.md).

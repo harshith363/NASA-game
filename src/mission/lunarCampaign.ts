@@ -1,12 +1,16 @@
 import { cacheIds, cacheSites, groundSlope, roverBounds, tractionAt, travelCost, type CacheId } from './lunarSurface.ts';
 import { crew, type CrewId } from '../data/crew.ts';
+import { stormSchedule, validHazards, type HazardSchedule, type IncidentState } from './lunarHazards.ts';
+import { landmarkIds, type LandmarkId, type SpecimenStatus } from '../data/lunarLandmarks.ts';
+export { stormSchedule };
 
 export const plots = [[-12, -5], [-7, -7], [7, -7], [12, -5], [-10, 7], [10, 7]] as const;
 export type Point = readonly [number, number];
 export const shelter: Point = [0, -2.8];
 export const locations = {
   power: [0, 2.8], crops: [-5.8, 2.5], water: [4.2, -3.1],
-  safety: shelter, survey: [6.1, 2.4], dock: [5, 9], cache: [19, 13], heritage: [-19, 12],
+  safety: shelter, survey: [6.1, 2.4], arrayRepair: [0, 2.8], recyclerInspection: [4.2, -3.1],
+  dock: [5, 9], cache: [19, 13], heritage: [-19, 12],
 } as const satisfies Record<string, Point>;
 
 export const jobs = {
@@ -15,6 +19,8 @@ export const jobs = {
   water: { name: 'Tune the recycler', reward: '+3 water', ticks: 27, specialist: 'mateo' },
   safety: { name: 'Run a shelter inspection', reward: 'Earlier storm warnings', ticks: 20, specialist: 'leena' },
   survey: { name: 'Survey for supplies', reward: 'Scan nearby terrain for supply caches', ticks: 25, specialist: 'noah' },
+  arrayRepair: { name: 'Repair damaged array', reward: 'Restore the damaged section', ticks: 30, specialist: 'aya' },
+  recyclerInspection: { name: 'Inspect isolated recycler', reward: 'Lift isolation and restore water recycling', ticks: 24, specialist: 'mateo' },
 } as const;
 export type Job = keyof typeof jobs;
 export const defaultStations: Record<CrewId, Job> = { aya: 'power', imani: 'crops', mateo: 'water', leena: 'safety', noah: 'survey' };
@@ -26,13 +32,28 @@ export interface Rover {
   position: Point; heading: number; charge: number; driver?: CrewId;
   cargo: number; delivered: number; heritage: boolean; rescue: number;
   contacts: CacheId[]; collected: CacheId[]; velocity: number; steering: number; radarReady: number;
+  specimens: Partial<Record<LandmarkId, SpecimenStatus>>;
 }
 export type DriveInput = { throttle: number; turn: number };
 export const idleDrive: DriveInput = { throttle: 0, turn: 0 };
 export const roverCapacity = 30;
 export const cargoCapacity = 60;
 export const materialCapacity = 200;
-export const finishTicks = 900;
+export const ticksPerDay = 60;
+const departureCycleTicks = 15 * ticksPerDay;
+export const firstDepartureTick = 12 * ticksPerDay;
+
+export function departureWindow(elapsed: number) {
+  const cycleStart = Math.floor(elapsed / departureCycleTicks) * departureCycleTicks;
+  const openTick = cycleStart + firstDepartureTick;
+  const closeTick = cycleStart + departureCycleTicks;
+  const open = elapsed >= openTick;
+  return {
+    cycle: cycleStart / departureCycleTicks + 1,
+    open, openTick, closeTick,
+    nextOpening: open ? closeTick + firstDepartureTick : openTick,
+  };
+}
 export const shipLoad = { materials: 15, battery: 8, oxygen: 6, food: 5 } as const;
 export const returnSteps = [
   { title: 'Lunar liftoff', instruction: 'Confirm the ascent path is clear, then launch.', choices: ['Launch into lunar orbit', 'Descend toward the surface'], correct: 0, cost: [2, 1, 1] },
@@ -41,30 +62,27 @@ export const returnSteps = [
   { title: 'Parachute deployment', instruction: 'Wait for the indicated safe deployment window after atmospheric braking.', choices: ['Deploy before atmospheric braking', 'Deploy at the safe window'], correct: 1, cost: [0, 1, 0] },
   { title: 'Ocean splashdown', instruction: 'Confirm the recovery beacon and secure the capsule.', choices: ['Activate recovery beacon', 'Switch off communications'], correct: 0, cost: [0, 1, 0] },
 ] as const;
-export interface ReturnFlight { stage: number; fuel: number; battery: number; oxygen: number }
+export interface ReturnFlight { stage: number; fuel: number; battery: number; oxygen: number; departureTick?: number }
 export interface Campaign {
   workers: Record<CrewId, Worker>; cooldowns: Partial<Record<Job, number>>;
   upgraded: boolean; safetyChecked: boolean; surveyed: boolean;
   rover: Rover; flight?: ReturnFlight;
+  stormAcknowledged?: number[];
+  hazards?: HazardSchedule;
+  incident?: IncidentState;
 }
 
 export function newCampaign(sheltered = false): Campaign {
   const workers = Object.fromEntries(crewIds.map(id => [id, { position: sheltered ? shelter : locations[defaultStations[id]] }])) as Campaign['workers'];
   return { workers, cooldowns: {}, upgraded: false, safetyChecked: false, surveyed: false,
-    rover: { position: locations.dock, heading: Math.PI / 2, charge: roverCapacity, cargo: 0, contacts: [], collected: [], delivered: 0, heritage: false, rescue: 0, velocity: 0, steering: 0, radarReady: 0 } };
+    rover: { position: locations.dock, heading: Math.PI / 2, charge: roverCapacity, cargo: 0, contacts: [], collected: [], delivered: 0, heritage: false, rescue: 0, velocity: 0, steering: 0, radarReady: 0, specimens: {} } };
 }
 
-export function stormSchedule(elapsed: number, earlier: boolean) {
-  const schedule = elapsed < 360 ? [180, 240, 360] : elapsed < 690 ? [570, 630, 690] : undefined;
-  if (!schedule) return;
-  const [warning, start, end] = schedule;
-  return { warning: warning - (earlier ? 30 : 0), start, end };
-}
-export function campaignStorm(elapsed: number, earlier = false) {
-  const window = stormSchedule(elapsed, earlier);
+export function campaignStorm(elapsed: number, earlier = false, schedule?: HazardSchedule) {
+  const window = stormSchedule(elapsed, earlier, schedule);
   if (window && elapsed >= window.start) return 'peak';
   if (window && elapsed >= window.warning) return 'warning';
-  return elapsed >= 360 ? 'recovery' : 'clear';
+  return window?.id === 1 ? 'clear' : 'recovery';
 }
 
 export const isDocked = (rover: Rover) => !rover.driver;
@@ -119,7 +137,7 @@ export function workerStatus(campaign: Campaign, id: CrewId, recalling: boolean,
   const there = near(worker.position, workerTarget(campaign, id, recalling, plot, builders));
   if (recalling) return there ? 'In shelter' : 'Returning to shelter';
   const job = worker.assignment?.job ?? defaultStations[id];
-  const station = builders.includes(id) ? `construction plot ${(plot ?? 0) + 1}` : worker.assignment?.plot !== undefined ? `plot ${worker.assignment.plot + 1}` : { power: 'power station', crops: 'farm', water: 'recycler', safety: 'tower', survey: 'comms' }[job];
+  const station = builders.includes(id) ? `construction plot ${(plot ?? 0) + 1}` : worker.assignment?.plot !== undefined ? `plot ${worker.assignment.plot + 1}` : { power: 'power station', crops: 'farm', water: 'recycler', safety: 'tower', survey: 'comms', arrayRepair: 'solar array', recyclerInspection: 'recycler' }[job];
   return there ? (builders.includes(id) || worker.assignment ? `Working · ${station}` : `On duty · ${station}`) : `Heading to ${station}`;
 }
 
@@ -164,6 +182,7 @@ export function stepRover(rover: Rover, input: DriveInput, seconds = 1) {
 
 export function migrateRover(campaign: Campaign) {
   const rover = campaign.rover as Rover & { cacheLoaded?: boolean };
+  if (rover.specimens === undefined) rover.specimens = {};
   if (rover.contacts === undefined && rover.collected === undefined) {
     rover.contacts = campaign.surveyed || rover.cacheLoaded ? ['cache'] : [];
     rover.collected = rover.cacheLoaded === true ? ['cache'] : [];
@@ -190,6 +209,13 @@ function validPoint(point: Point) {
 
 export function validCampaign(c: Campaign) {
   if (!c || !c.workers || !c.rover || !c.cooldowns || [c.upgraded, c.safetyChecked, c.surveyed].some(value => typeof value !== 'boolean')) return false;
+  if (c.hazards !== undefined && !validHazards(c.hazards)) return false;
+  if (c.incident !== undefined && (!c.hazards || !c.incident || typeof c.incident.acknowledged !== 'boolean'
+    || c.incident.partsReserved !== undefined && (c.incident.partsReserved !== true || c.hazards.incident.type !== 'impact')
+    || c.incident.resolvedAt !== undefined && (!Number.isInteger(c.incident.resolvedAt) || c.incident.resolvedAt < c.hazards.incident.tick))) return false;
+  const acknowledged = c.stormAcknowledged;
+  if (acknowledged !== undefined && (!Array.isArray(acknowledged) || new Set(acknowledged).size !== acknowledged.length
+    || acknowledged.some(id => id !== 1 && id !== 2))) return false;
   if (!crewIds.every(id => {
     const worker = c.workers[id];
     if (!worker || !validPoint(worker.position)) return false;
@@ -206,12 +232,16 @@ export function validCampaign(c: Campaign) {
     || !Number.isInteger(r.rescue) || r.rescue < 0 || r.rescue > 20 || typeof r.heritage !== 'boolean') return false;
   const validIds = (ids: CacheId[]) => Array.isArray(ids) && new Set(ids).size === ids.length && ids.every(id => cacheIds.includes(id));
   if (!validIds(r.contacts) || !validIds(r.collected) || !r.collected.every(id => r.contacts.includes(id))) return false;
+  if (!r.specimens || typeof r.specimens !== 'object' || Array.isArray(r.specimens)
+    || Object.entries(r.specimens).some(([id, status]) => !landmarkIds.includes(id as LandmarkId) || !['visited', 'aboard', 'delivered'].includes(status)
+      || status === 'aboard' && !r.driver)) return false;
   if (r.cargo + r.delivered !== r.collected.reduce((sum,id) => sum + cacheSites[id].materials,0)) return false;
   if (!r.driver && (!near(r.position, locations.dock) || r.rescue || r.cargo || r.velocity || r.steering)) return false;
   if (r.driver && c.workers[r.driver].assignment) return false;
   if (c.flight) {
     const f = c.flight;
     if (!Number.isInteger(f.stage) || f.stage < 0 || f.stage > returnSteps.length) return false;
+    if (f.departureTick !== undefined && (!Number.isInteger(f.departureTick) || f.departureTick < 0 || !departureWindow(f.departureTick).open)) return false;
     const spent = returnSteps.slice(0, f.stage).reduce(([a,b,d], step) => [a+step.cost[0], b+step.cost[1], d+step.cost[2]], [0,0,0]);
     return f.fuel === 6-spent[0] && f.battery === 8-spent[1] && f.oxygen === 6-spent[2];
   }

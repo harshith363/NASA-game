@@ -1,18 +1,21 @@
 import { cacheIds, cacheSites, missionSunElevation } from '../mission/lunarSurface';
+import { landmarkIds, lunarLandmarks } from '../data/lunarLandmarks';
 import { locations, shelter, workerStatus } from '../mission/lunarCampaign';
 import { box, disposeModel, expansionModel, roverModel } from './campaignModels';
-import { plots, constructionTypes, nextBuild, stormAt, type OutpostState } from '../mission/outpostSimulation';
+import { plots, constructionTypes, nextBuild, outpostStorm, type OutpostState } from '../mission/outpostSimulation';
 import * as THREE from 'three';
 import { crew as crewRoster } from '../data/crew';
 import { buildings, type Building } from '../data/buildings';
 import { hasParticleRisk, type MissionState, type StormPhase } from '../mission/dailyMission';
 import type { MissionEvent } from '../mission/presentation';
 import type { MotionPreference } from '../ui/motionPreference';
+import type { SurfacePanel } from '../ui/buildingControls';
 import { makeFacility } from './facilities';
 import { createAstronaut, createLander } from './flightModels';
 import { buildTerrain, lunarHeight } from './lunarTerrain';
 
 const coordinates = { farm: [-8.5, 2.8], control: [0, -4.9], comms: [8.5, 2.8] };
+const landingZ = 9.3;
 type Point = [number, number];
 const habitat: Point = [4.1, -3.4];
 const shelterDoor: Point = [0, -2.65];
@@ -23,19 +26,19 @@ type BuildingId = Building['id'];
 export function mountOutpost(
   container: HTMLElement,
   markers: Record<BuildingId, HTMLButtonElement>,
-  activate: (building: Building) => void,
+  surfaceMarkers: Record<SurfacePanel, HTMLButtonElement>,
   motion: MotionPreference,
   activateExpansion: (plot: number) => void = () => {},
 ) {
   const canvas = document.createElement('canvas');
   let renderer: THREE.WebGLRenderer;
   const context = canvas.getContext('webgl2', { antialias: true, alpha: false });
-  if (!context) return mountStaticMap(container, markers);
+  if (!context) return mountStaticMap(container, markers, surfaceMarkers);
 
   try {
     renderer = new THREE.WebGLRenderer({ canvas, context, antialias: true });
   } catch {
-    return mountStaticMap(container, markers);
+    return mountStaticMap(container, markers, surfaceMarkers);
   }
 
   container.append(canvas);
@@ -93,6 +96,17 @@ export function mountOutpost(
   box(overlook,[1.4,.15,1.2],[0,.09,0],0x7f9da9);
   box(overlook,[1.2,.78,.13],[0,.63,-.48],0x9cc8d5);
   scene.add(overlook);
+  for (const id of landmarkIds) {
+    const sign = new THREE.Group();
+    const [x, z] = lunarLandmarks[id].point;
+    sign.position.set(x, lunarHeight(x, z), z);
+    box(sign, [1.5, .14, 1.5], [0, .1, 0], 0x536776);
+    box(sign, [.11, 1.8, .11], [0, .9, 0], 0x91a7bd);
+    const marker = new THREE.Mesh(new THREE.OctahedronGeometry(.5), new THREE.MeshStandardMaterial({ color: 0xc6afff, emissive: 0x573388 }));
+    marker.position.y = 2.06;
+    sign.add(marker);
+    scene.add(sign);
+  }
   // Scale model beside the interpretive sign, separate from collectible equipment.
   const surveyor = new THREE.Group();
   surveyor.position.set(-21, lunarHeight(-21,9.5), 9.5);
@@ -119,8 +133,9 @@ export function mountOutpost(
   function updateFacilities(state: OutpostState, driveView = false) {
     timedState = state;
     driving = driveView;
+    for (const marker of Object.values(surfaceMarkers)) marker.hidden = driving;
     fallback?.updateFacilities(state, driveView);
-    phase = stormAt(state.elapsed, state.campaign.safetyChecked);
+    phase = outpostStorm(state);
     sun.position.y = Math.hypot(sun.position.x,sun.position.z) * Math.tan(THREE.MathUtils.degToRad(missionSunElevation(state.elapsed)));
     growLevel = state.growLights === false ? 0 : .65;
     for (const { id, cache } of caches) cache.visible = state.campaign.rover.contacts.includes(id)
@@ -170,7 +185,6 @@ export function mountOutpost(
   scene.add(roads);
 
   const lander = createLander();
-  const landingZ = 9.3;
   const landingHeight = lunarHeight(0, landingZ);
   lander.position.set(0, landingHeight, landingZ);
   lander.rotation.y = Math.PI;
@@ -248,6 +262,12 @@ export function mountOutpost(
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const targets = models.map((model) => model.group);
+  const surfaceModels = { rover: dock, departure: lander } as const;
+  const surfacePanels = Object.keys(surfaceModels) as SurfacePanel[];
+  for (const panel of surfacePanels) {
+    surfaceModels[panel].userData.surfacePanel = panel;
+    targets.push(surfaceModels[panel]);
+  }
   let selected: BuildingId | undefined;
   let hovered: BuildingId | undefined;
   let growLevel = .46;
@@ -390,18 +410,23 @@ export function mountOutpost(
     raycaster.setFromCamera(pointer, camera);
     const hit = raycaster.intersectObjects(targets, true).find(({ object }) => object.visible);
     let item = hit?.object as THREE.Object3D | undefined;
-    while (item && !item.userData.building) item = item.parent ?? undefined;
-    return item?.userData.building as Building | undefined;
+    while (item && !item.userData.building && !item.userData.surfacePanel) item = item.parent ?? undefined;
+    return {
+      building: item?.userData.building as Building | undefined,
+      panel: item?.userData.surfacePanel as SurfacePanel | undefined,
+    };
   }
 
   canvas.addEventListener('pointermove', (event) => {
-    hovered = pick(event)?.id;
-    canvas.style.cursor = hovered ? 'pointer' : '';
+    const { building, panel } = pick(event);
+    hovered = building?.id;
+    canvas.style.cursor = hovered || panel ? 'pointer' : '';
   });
   canvas.addEventListener('pointerleave', () => { hovered = undefined; });
   canvas.addEventListener('click', (event) => {
-    const building = pick(event);
-    if (building) activate(building);
+    const { building, panel } = pick(event);
+    if (panel && !driving) surfaceMarkers[panel].click();
+    else if (building) markers[building.id].click();
     else {
       const hit = raycaster.intersectObjects(expansions.map(site => site.group), true)[0];
       let item = hit?.object as THREE.Object3D | undefined;
@@ -532,6 +557,17 @@ export function mountOutpost(
       markers[building.id].style.top = `${(.5 - anchor.y * .5) * 100}%`;
     }
 
+    for (const panel of surfacePanels) {
+      const marker = surfaceMarkers[panel];
+      marker.hidden = driving;
+      if (driving) continue;
+      anchor.copy(surfaceModels[panel].position);
+      anchor.y += panel === 'rover' ? .8 : 2.5;
+      anchor.project(camera);
+      marker.style.setProperty('--marker-x', `${(anchor.x * .5 + .5) * 100}%`);
+      marker.style.top = `${(.5 - anchor.y * .5) * 100}%`;
+    }
+
     crew.forEach(({ figure }, i) => {
       const label = workerLabels[i];
       label.hidden = !timedState || !figure.visible || driving || timedState.campaign.rover.driver === crewRoster[i].id;
@@ -552,7 +588,7 @@ export function mountOutpost(
     observer.disconnect();
     canvas.remove();
     workerLabels.forEach(label => label.remove());
-    fallback = mountStaticMap(container, markers);
+    fallback = mountStaticMap(container, markers, surfaceMarkers);
     fallback.select(selected);
     if (timedState) fallback.updateFacilities(timedState, driving);
     if (committed) fallback.present({ type: 'settled', state: committed, phase });
@@ -571,7 +607,7 @@ export function mountOutpost(
   };
 }
 
-function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTMLButtonElement>) {
+function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTMLButtonElement>, surfaceMarkers: Record<SurfacePanel, HTMLButtonElement>) {
   const canvas = document.createElement('canvas');
   canvas.width = 960;
   canvas.height = 600;
@@ -583,6 +619,13 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
     const [x, y] = sites[building.id];
     markers[building.id].style.setProperty('--marker-x', `${x / 9.6}%`);
     markers[building.id].style.top = `${(y - 39) / 6}%`;
+  }
+  const mapPoint = ([x,z]: readonly [number,number]) => [480 + x*8, 300 + z*6] as const;
+  const surfacePoints = { rover: locations.dock, departure: [0, landingZ] } as const;
+  for (const panel of Object.keys(surfacePoints) as SurfacePanel[]) {
+    const [x, y] = mapPoint(surfacePoints[panel]);
+    surfaceMarkers[panel].style.setProperty('--marker-x', `${x / 9.6}%`);
+    surfaceMarkers[panel].style.top = `${(y - 10) / 6}%`;
   }
   let expansionState: OutpostState | undefined;
   let selected: BuildingId | undefined;
@@ -613,14 +656,15 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
     context.stroke();
     if (expansionState) {
       const { rover, workers } = expansionState.campaign;
-      const mapPoint = ([x,z]: readonly [number,number]) => [480 + x*8, 300 + z*6] as const;
       const mark = (point: readonly [number,number], label: string, color: string) => {
         const [x,y] = mapPoint(point);
         context.fillStyle = color; context.fillRect(x-3,y-3,6,6);
         context.font = '13px sans-serif'; context.fillText(label,x+6,y+4);
       };
-      mark(locations.dock,'Dock','#9deabc');
+      mark(locations.dock,'','#9deabc');
+      mark(surfacePoints.departure,'','#ffc580');
       mark(locations.heritage,'Apollo 12 overlook','#9adef2');
+      for (const id of landmarkIds) mark(lunarLandmarks[id].point, `◆ ${lunarLandmarks[id].name}`, '#d6c1ff');
       for (const id of rover.contacts) if (!rover.collected.includes(id)) mark(cacheSites[id].point,cacheSites[id].name,'#ffd19c');
       mark(rover.position,'Rover','#ffd19c');
       if (expansionState.sheltered) mark(shelter,'Shelter','#9deabc');
@@ -654,7 +698,12 @@ function mountStaticMap(container: HTMLElement, markers: Record<BuildingId, HTML
   paint();
   return {
     ready: Promise.resolve(),
-    updateFacilities(state: OutpostState, _driving = false) { expansionState = state; phase = stormAt(state.elapsed, state.campaign.safetyChecked); paint(); },
+    updateFacilities(state: OutpostState, driving = false) {
+      for (const marker of Object.values(surfaceMarkers)) marker.hidden = driving;
+      expansionState = state;
+      phase = outpostStorm(state);
+      paint();
+    },
     select(id?: BuildingId) { selected = id; paint(); },
     present(event: MissionEvent) {
       if ('state' in event) { state = event.state; phase = event.phase; }

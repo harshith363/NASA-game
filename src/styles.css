@@ -42,7 +42,7 @@ button { cursor: pointer; }
   font-weight: 650;
   font-size: .84rem;
 }
-.map-marker:last-child {
+.map-marker[data-facility="comms"] {
   left: clamp(96px, var(--marker-x, 50%), calc(100% - 96px));
 }
 .map-marker::before {
@@ -335,7 +335,7 @@ button { cursor: pointer; }
   .signal-card, .report { padding: 7px 9px; }
   .map-marker { font-size: .67rem; min-height: 40px; padding: 5px 6px; gap: 4px; }
   .map-marker::before { width: 5px; height: 5px; }
-  .map-marker:last-child {
+  .map-marker[data-facility="comms"] {
     width: max-content;
     max-width: 108px;
     white-space: normal;
@@ -695,33 +695,43 @@ button { cursor: pointer; }
 /* Compact mission HUD leaves the terrain available for direct selection. */
 .timed-outpost { display: flex; flex-direction: column; gap: 12px; min-height: calc(100dvh - 2 * var(--edge)); pointer-events: none; }
 .timed-outpost .console { pointer-events: auto; padding: 16px; border-radius: 12px; }
-.sim-topline { display: flex; align-items: center; gap: 14px; }
-.sim-brand { margin-right: auto; text-shadow: 0 2px 8px #000; }
+.sim-topline { position: sticky; top: var(--edge); z-index: 3; display: grid; grid-template-columns: minmax(125px, 1fr) minmax(245px, 2fr) auto auto; align-items: center; gap: 14px; }
+.sim-brand { text-shadow: 0 2px 8px #000; }
 .sim-brand h1 { font-size: clamp(1rem, 2vw, 1.3rem); }
+.sim-brand p { margin: 4px 0 0; font-size: .85rem; }
 .sim-clock.console { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 14px; border: 1px solid #63708070; border-radius: 12px; flex: none; }
 .sim-clock strong { font: 600 1rem ui-monospace, monospace; min-width: 90px; font-variant-numeric: tabular-nums; }
 .sim-clock button { display: grid; place-items: center; border: 0; border-radius: 8px; min-width: 40px; height: 40px; background: #ffffff0b; color: #e9edf3; }
 .sim-clock .clock-play { color: #ffc580; font-size: 1rem; }
 .sim-clock button:hover { background: #ffffff20; }
 .sim-clock .clock-speed { font-weight: 650; }
-.sim-resources { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
-.sim-resources article { display: grid; gap: 3px; }
-.sim-resources article > span { text-transform: uppercase; letter-spacing: .1em; font-size: .65rem; color: var(--muted); }
-.sim-resources strong { font: 600 1.1rem ui-monospace, monospace; }
+.timed-outpost .sim-resources { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 8px 12px; }
+.sim-resources > div { display: grid; align-content: start; gap: 3px; }
+.sim-resources span { font-size: .73rem; color: var(--muted); }
+.sim-resources strong { font: 600 clamp(.84rem, 2.4vw, 1.1rem) ui-monospace, monospace; }
 .sim-resources small { font-size: .72rem; }
 .sim-resources [data-change=loss] { color: #ff7878; }
 .sim-resources [data-change=gain] { color: #93e9ab; }
-.sim-facility-nav { display: flex; flex-wrap: wrap; gap: 6px; width: fit-content; pointer-events: auto; }
-.sim-facility-nav button { background: #141b26ed; border-radius: 8px; font-size: .8rem; }
-.sim-facility-nav button[aria-expanded=true] { border-color: #ffc580; color: #ffc580; }
+#sim-build-toggle { pointer-events: auto; background: #141b26ed; }
+#sim-build-toggle[aria-expanded=true] { border-color: #ffc580; color: #ffc580; }
+.surface-marker { --facility-color: #ffc580; top: 60%; }
+.surface-marker[data-surface="departure"] { transform: translate(calc(-100% - 4px), -100%); left: clamp(102px, var(--marker-x, 50%), calc(100% - 10px)); }
+.surface-marker[data-surface="departure"]::after { left: 100%; }
+.surface-marker[data-surface="rover"] { --facility-color: #9deabc; transform: translate(4px, -100%); left: clamp(10px, var(--marker-x, 58%), calc(100% - 109px)); }
+.surface-marker[data-surface="rover"]::after { left: 0; }
 .sim-bottom { margin-top: auto; padding-top: 210px; display: flex; justify-content: space-between; align-items: end; gap: 20px; }
 .sim-operations { width: min(340px, 100%); }
-.sim-bottom p, .sim-facility-panel p { margin-block: 8px; font-size: .83rem; }
+.sim-bottom p, .sim-facility-panel p { margin-block: 8px; font-size: .95rem; line-height: 1.45; }
 .sim-bottom h2, .sim-facility-panel h2 { font-size: 1.1rem; }
 .sim-bottom button { min-height: 40px; }
 .sim-bottom details { font-size: .8rem; margin-block: 10px; }
-.sim-facility-panel, .sim-build { position: fixed; right: var(--edge); bottom: var(--edge); width: min(370px, calc(100vw - 2 * var(--edge))); max-height: calc(100dvh - 240px); overflow-y: auto; z-index: 5; box-shadow: 0 15px 40px #0006; }
-.sim-facility-panel header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.timed-outpost :is(.sim-facility-panel, .sim-build) { position: fixed; right: var(--edge); bottom: var(--edge); width: min(480px, calc(100vw - 2 * var(--edge))); max-height: calc(100dvh - 120px); padding: 20px; overflow-y: auto; z-index: 5; box-shadow: 0 15px 40px #0006; }
+.timed-outpost .campaign-rover { width: min(405px, calc(100vw - 2 * var(--edge))); }
+.sim-facility-panel header, .sim-build header { display: flex; align-items: center; justify-content: space-between; gap: 10px; position: sticky; top: -20px; padding-block: 8px; background: #151c27; z-index: 1; }
+.sim-facility-panel :is(.action, .icon-button), .sim-build :is(.sim-plot, .icon-button) { min-height: 44px; }
+.sim-facility-panel .icon-button, .sim-build .icon-button { min-width: 44px; }
+.sim-utilities { margin-top: 10px; }
+.sim-utilities .utility-menu { inset: auto auto calc(100% + 10px) 0; }
 .sim-facility-panel label { display: flex; align-items: center; gap: 10px; padding-block: 10px; cursor: pointer; }
 .sim-facility-panel input { width: 20px; height: 20px; accent-color: #ffc580; }
 .sim-facility-panel [data-panel] { border-top: 1px solid #ffffff20; padding-top: 8px; }
@@ -732,19 +742,20 @@ button { cursor: pointer; }
 #sim-save { color: var(--muted); font-size: .72rem; }
 #sim-build-error { color: #ff7878; }
 @media (max-width: 760px) {
-  .sim-resources { grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .sim-topline { flex-wrap: wrap; gap: 8px; }
-  .sim-brand { width: 100%; }
-  .sim-utilities { margin-left: auto; }
+  .sim-topline { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .sim-brand, .sim-resources { grid-column: 1 / -1; }
+  .sim-clock { justify-self: start; }
   .sim-bottom { padding-top: 200px; }
-  .sim-facility-panel, .sim-build { max-height: 55dvh; }
+  .timed-outpost :is(.sim-facility-panel, .sim-build) { max-height: 58dvh; padding: 16px; width: calc(100vw - 2 * var(--edge)); }
+  .sim-facility-panel header, .sim-build header { top: -16px; }
   .flight-utilities { grid-area: 1 / 2; }
 }
 
 /* Individual crew, rover operations, and the return console. */
 .worker-map-label { position: absolute; transform: translate(-50%,-100%); background: #101722e8; border-radius: 4px; padding: 1px 4px; pointer-events: none; font: 600 .64rem ui-monospace, monospace; z-index: 1; }
 .campaign-crew, .departure-checks { list-style: none; padding: 0; margin: 10px 0; }
-.campaign-crew li { display: grid; grid-template-columns: 57px 1fr; gap: 6px; padding: 3px 0; font-size: .77rem; }
+.campaign-crew li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: .9rem; }
+.campaign-crew li span { grid-column: 1 / -1; }
 .campaign-jobs { margin-top: 12px; border-top: 1px solid #ffffff20; }
 .campaign-jobs h3, .campaign-jobs h4 { margin: 8px 0 2px; font-size: .9rem; }
 .campaign-jobs article { padding: 7px 0; }
@@ -858,3 +869,21 @@ button { cursor: pointer; }
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.timed-alert { width: min(560px, calc(100vw - 32px)); }
+.timed-alert header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.timed-alert header button, .timed-alert .action { min-height: 44px; }
+.timed-alert header button { min-width: 44px; }
+.timed-alert h3 { margin: 16px 0 6px; }
+.timed-alert p { margin-block: 8px; line-height: 1.45; }
+.timed-alert figure { margin: 10px 0; }
+.timed-alert img { max-height: 30dvh; max-width: 100%; object-fit: contain; }
+.timed-alert figcaption { font-size: .85rem; color: var(--muted); }
+
+.flight-command:has(.command-help-trigger) { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto; align-content: start; }
+.flight-command :is(.command-help-text, .command-block-reason, .flight-charges, small) { grid-column: 1 / -1; }
+.flight-command .command-help-trigger { width: 44px; min-height: 44px; color: #bce8f2; background: #233647; text-align: center; justify-content: center; font-size: 1.1rem; }
+.flight-command .command-help-text { font-size: .92rem; line-height: 1.4; padding: 8px; margin: 0; background: #203246; }
+.flight-command .command-block-reason { padding: 0 8px 8px; margin: 0; font-size: .85rem; }
+.flight-command small, .flight-charges { font-size: .76rem; }
+.rover-map .geology-pin { color: #d6c1ff; font-size: .93rem; }

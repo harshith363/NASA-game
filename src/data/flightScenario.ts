@@ -27,12 +27,33 @@ export const phaseCopy: Record<FlightPhase, [string, string, string]> = {
   descent: ['Landing checklist', 'Leena', 'Confirm the site and lander before authorizing descent. Our combined reserves represent the whole mission, not separate vehicle tanks.'],
   touchdown: ['Powered descent', 'Pilot', 'Guidance is locked. The lander is slowing for touchdown.'],
   debrief: ['Your flight report', 'Leena', 'You brought the crew to the Moon. Repairs traded fuel, power and breathing supplies. Outpost day one starts with its own standard supplies.'],
-  outpost: ['Outpost ready', 'Imani', 'Welcome to the lunar outpost. Survive fifteen mission days and prepare for the return to Earth.'],
+  outpost: ['Outpost ready', 'Imani', 'Welcome to the lunar outpost. Prepare the return ship and board during the first departure window, on Days 13 through 15.'],
 };
 export const labels = {
   start: 'Start spacecraft checks', ground: 'Connect ground power', avionics: 'Power avionics', life: 'Start life support · CO₂ scrubber', align: 'Align navigation', route: 'Load approved route', confirm: 'Confirm alignment', onboard: 'Switch to onboard power', go: 'Request GO', authorize: 'Authorize launch', ignite: 'Ignition', orbit: 'Complete ascent', depart: 'Authorize departure burn', transfer: 'Complete departure', inspect: 'Inspect coolant warning', cool: 'Cool and restart', thrusters: 'Use backup thrusters', coast: 'Continue journey', isolate: 'Isolate faulty supply line', repair: 'Power the repair tool', bypass: 'Use reserve bypass', capture: 'Authorize lunar braking', checklist: 'Confirm landing site and lander', land: 'Authorize descent', touchdown: 'Complete touchdown', report: 'Review flight report', acknowledge: 'Acknowledge result', finish: 'Enter outpost day one',
 } as const;
 export type FlightAction = keyof typeof labels;
+export const commandHelp: Partial<Record<FlightAction, string>> = {
+  start: 'Begin the pad checklist. Verify the spacecraft before the crew leaves Earth.',
+  ground: 'Use electricity from the launch pad while you check the spacecraft and save its battery.',
+  avionics: 'Start the computers and instruments the crew uses for guidance and monitoring.',
+  life: 'Connect the oxygen supply to replenish breathing gas. Start the CO₂ scrubber to remove the carbon dioxide the crew exhales.',
+  align: 'Compare the onboard route card with the route approved by Mission Control.',
+  route: 'Use the route cards in the exercise to choose and upload the approved plan.',
+  confirm: 'Compare both route cards again and verify the correction.',
+  onboard: 'Disconnect from pad power and verify that the spacecraft can run from its own supply.',
+  go: 'Ask Mission Control to review the cabin, route, and onboard power and clear the crew for launch.',
+  authorize: 'Confirm that the crew is ready. Authorization starts the countdown after Mission Control gives GO.',
+  capture: 'Fire the engine to slow the spacecraft relative to the Moon so lunar gravity can hold it in orbit.',
+  checklist: 'Verify the target area and check that the lander is ready for powered descent.',
+  land: 'Use the lander engine to slow down as you approach the surface. Check the reserve changes before authorizing the burn.',
+};
+export const countdownHelp = 'Hold delays ignition so the crew has time to review readiness. Resume continues from the time on the clock.';
+export const commandPrerequisites: Partial<Record<FlightAction, FlightAction[]>> = {
+  ground: ['start'], avionics: ['ground'], life: ['avionics'], align: ['avionics'], route: ['align'], confirm: ['route'],
+  onboard: ['life', 'confirm'], go: ['onboard'], authorize: ['go'],
+  checklist: ['capture'], land: ['checklist'],
+};
 export const lessons: Partial<Record<FlightAction, string>> = {
   ground: 'Aya: Ground power connected. The power bus is online.', avionics: 'Aya: Displays online. The approved route card is MOON-01.',
   life: 'Mateo: Cabin pressure checked, oxygen supply connected and CO₂ scrubber running. Adding oxygen does not remove CO₂.',

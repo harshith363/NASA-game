@@ -1,6 +1,13 @@
 # Junior Astronaut Mission Trainer enhancement plan
 
-This plan covers the current Earth-to-Moon flight, timed lunar outpost, rover, and return campaign. Priority is ordered by impact on the core mission, then by implementation dependency. The current implementation is described in the [game overview](GAME_OVERVIEW.md) and [campaign validation](CAMPAIGN_VALIDATION.md).
+All seven priorities are implemented. The original requirements and acceptance criteria follow. Tests cover both departure windows, legacy saves, all three incident variants, and rover routes and specimen delivery. Chrome checks cover both returns, desktop WebGL, and mobile touch emulation with the static map. A first-time player observation and physical mobile checks remain open. See the [game overview](GAME_OVERVIEW.md) and [campaign validation](CAMPAIGN_VALIDATION.md).
+
+## Implementation notes
+
+- The first window opens on Day 13.00 and closes on Day 16.00. Later windows follow the same pattern every 15 mission days.
+- Mission Control displays live locations, assignments, and job cooldowns. The map's **Rover dock** and **Departure** markers open their respective panels.
+- New runs save two storm timings and one incident draw. An array repair reserves 12 materials on the first assignment. Canceling resets the work, and the reserved parts stay available for reassignment. Dust cleaning spends 3 power when committed. Earlier saves retain their original storm schedule.
+- The seven supply caches count toward the original 150-material score target. The three new geology sites have fictional specimens and locally stored, credited Apollo photographs.
 
 | Priority | Work | Deliverable |
 | --- | --- | --- |
@@ -14,9 +21,18 @@ This plan covers the current Earth-to-Moon flight, timed lunar outpost, rover, a
 
 Build the HUD and map controls before integrating the new crew roster and alerts. Launch and descent help can proceed independently. Establish the storm briefing before randomizing the hazard schedule so all incidents can use the same alert presentation. Tune rover routes and incidents together because both affect the reserves and time available to depart.
 
+## How the implementation agent should use Codex limits
+
+1. At the start of implementation or when resuming, call `mcp__codex_app__get_usage_limits` if available. Use the `codex` bucket in `rateLimitsByLimitId` when present, with `rateLimits` as the fallback. Read `ordinaryUsageAllowed`, the two windows’ `usedPercent` and `resetsAt`, and any available reset credits. Calculate remaining usage as `100 - usedPercent` for each window and use the lower value to size the next batch. The percentages describe shared account usage. Missing values mean usage is unknown. If the tool is unavailable, proceed in small batches and use any limit information surfaced by the host.
+2. Start with the highest-priority unfinished work whose dependencies are ready. When usage is tight, complete one small, usable change at a time and verify it before expanding scope. Start Priority 1 by pairing the window rule and boarding guard with the Departure panel’s open or closed status. Follow with boundary alerts and the first- and second-window return checks. For Priority 2, land the compact HUD and map navigation before the broader menu refresh. Continue to the next batch while usage is available.
+3. Recheck after a substantial verified batch, before starting a larger change when either window is close to its limit, or when Codex warns about usage. Rapid polling adds little value because other chats can consume the same allowance. Preserve the feature’s acceptance checks and size the batch so there is room to run them.
+4. If the host prevents further work, resume from the last verified change when usage is available. Leave a concise handoff with the priority, files changed, checks run and their results, any in-progress work, the exact next step, and the relevant reset time in the user’s time zone if known. Treat reset credits as account information and ask for explicit authorization before redeeming one.
+
+Keep usage checks in the agent’s workflow. The game, tests, and CI use the same implementation regardless of the Codex account running the work.
+
 ## 1. Recurring departure windows
 
-**Proposed interpretation.** Days are numbered from Day 1 in the HUD. The first window covers Days 13, 14, and 15. The next covers Days 28, 29, and 30. A day takes 60 simulation ticks. At 1× it takes 60 seconds of active play. Pausing, leaving the tab, or saving and leaving the game freezes the countdown. These are training windows set by the scenario.
+**Window rules.** Days are numbered from Day 1 in the HUD. The first window covers Days 13, 14, and 15. The next covers Days 28, 29, and 30. A day takes 60 simulation ticks. At 1× it takes 60 seconds of active play. Pausing, leaving the tab, or saving and leaving the game freezes the countdown. These are training windows set by the scenario.
 
 | HUD time | Tick | Rule |
 | --- | ---: | --- |

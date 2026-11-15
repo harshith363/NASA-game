@@ -4,7 +4,7 @@ Select **Enter lunar outpost** after touchdown to open a fresh Day 1 for that fl
 
 ## Establish the base
 
-The standard outpost starts with 25 battery, 18 food, 20 water, 20 oxygen, and 100 materials. Battery starts with 30 units of capacity. The HUD shows inventory and net rates per day. Red indicates a falling resource.
+The standard outpost starts with 25 power, 18 food, 20 water, 20 oxygen, and 100 materials. Battery starts with 30 units of capacity. The HUD shows inventory and net rates per day. A minus sign indicates a falling resource.
 
 | Facility | Materials | Work after crew arrival | Effect online |
 | --- | ---: | ---: | --- |
@@ -26,13 +26,13 @@ Use **Build** to select one of six plots. Two available astronauts walk to the c
 
 Open a facility panel to assign an available astronaut, watch progress, or cancel a job. Preferred specialists finish their own jobs faster. Active jobs, construction, and driving compete for crew availability.
 
-The first storm runs from **Day 5.00 to Day 7.00**, with the default warning at **Day 4.00**. The second runs from **Day 11.50 to Day 12.50**, with the default warning at **Day 10.50**. The clock pauses at warnings, arrivals, and clearances. Use **Recall crew to shelter** early and check the roster for each astronaut’s status. Rover drivers must dock and unload before walking to shelter. Outside exposure during a storm, or exhausting food, water, or oxygen, ends the run. When the battery runs out, the crew draws down stored oxygen.
+Storms arrive at different times in each new outpost. The first typically peaks around Day 5 and the second around Day 11. The forecast shows the exact timing for your run. The clock pauses at warnings, arrivals, and clearances. Use **Recall crew to shelter** early and check the roster for each astronaut’s status. Rover drivers must dock and unload before walking to shelter. Outside exposure during a storm, or exhausting food, water, or oxygen, ends the run. When the battery runs out, the crew draws down stored oxygen.
 
 The Communications Centre shows an animated response when a forecast is requested. Reduced-motion settings keep the message static. The terrain gets an amber overlay and moving particle streaks during alerts. Reduced motion keeps a static effect. The centered **Mission lost** dialog explains the cause and offers a review or restart. **New outpost** opens an in-game confirmation before replacing the timed save.
 
 ## Drive and use radar
 
-1. Select **Rover**, choose an available driver, and board. Press **Play** if paused.
+1. Select **Rover dock** on the map, choose an available driver, and board. Press **Play** if paused.
 2. Use **WASD**, arrow keys, or the on-screen steering buttons. Driving view runs at 1×. Select **Park & return to base view** to use fast-forward while the rover remains deployed. The driver stays aboard until docking.
 3. Use the Communications survey or **Radar sweep** to reveal caches. A sweep costs 0.6 charge, reaches 27 grid units, and recharges in four seconds of play at 1×. Discovered sites appear as waypoints. The cargo hold fits 60 materials, and the rover holds 30 charge.
 4. Stop near a revealed cache and collect it once. When you return to the pad, explicitly select **Dock & unload** to release the driver and deposit cargo. Use **Charge from base** to transfer power while keeping at least 5 power at the base.
@@ -44,20 +44,31 @@ The Communications Centre shows an animated response when a forecast is requeste
 | High Ridge | Northeast beyond the crater rim | 35 |
 | South Flats | Southeast past the low basin | 25 |
 | Shadow Basin | Northwest beyond the overlook | 50 |
+| West Traverse | Southwest of the dock | 15 |
+| North Shoulder | North of the base toward North Ray | 20 |
+| Southwest Pass | Far southwest past Genesis Ridge | 25 |
 
 The rover accelerates and brakes gradually. Crater slopes and rough ground affect traction and energy use, and the wheels and suspension follow the terrain. The return charge display estimates a direct route across the terrain. Leave a margin for detours and scanning.
 
+## Respond to equipment alerts
+
+New outposts draw two storm timings and one equipment incident. The draw is saved with the run. Each storm warning pauses time and opens a briefing with a recall button. One incident between the storms affects the original solar array or the recycler. Open Mission Control to assign a repair or inspection, or run the cleaning cycle from a dust alert. The original fixed forecast still applies to earlier saves.
+
+## Collect geology samples
+
+Choose Genesis Ridge, North Ray Highlands, or Orange Glass Crater in the rover waypoint picker. Slow down at the geology marker to open its exhibit. A sample rides in a separate specimen rack until you dock or complete a tow. West Traverse, North Shoulder, and Southwest Pass are additional radar caches. The exploration score still uses the 150-material delivery target and the Apollo 12 overlook.
+
 ## Depart and score the mission
 
-At **Day 16.00**, 15 full days have passed. Open **Departure** to see each check and exact shortages. Dock the rover, lift shelter once it is safe, and finish or cancel active jobs. The checklist can cancel remaining jobs in one action once the time requirement is met. The return ship requires **15 materials, 8 battery, 6 oxygen, and 5 food**. Surface play can continue until the checks are met.
+The first boarding window opens at **Day 13.00** and closes at **Day 16.00**. The next opens at **Day 28.00** and closes at **Day 31.00**. Each opening and closing pauses the clock. If you miss a window, use Play to keep operating until the next opening. Select **Departure** at the lander to see each check and exact shortages. Dock the rover, lift shelter once it is safe, and finish or cancel active jobs. The checklist can cancel remaining jobs in one action, even while the window is closed. The return ship requires **15 materials, 8 power, 6 oxygen, and 5 food**. Surface play can continue until the checks are met.
 
 **Board return ship** loads supplies once and opens the return console. Commit the commands for lunar liftoff, the Earth-bound burn, reentry alignment, parachute deployment, and recovery. Progress saves after each accepted command.
 
 | Score category | Points | How it is calculated |
 | --- | ---: | --- |
-| Survival and return | 40 | Up to 25 for time survived against the 15-day goal, plus 15 for safe splashdown. |
-| Outpost reserves | 25 | Up to 5 each for 12 battery, 8 food, 10 water, 8 oxygen, and 15 materials. At splashdown the base values already exclude ship loading. |
-| Sustainable operations | 15 | 5 each for a steady or rising net battery, food, and water rate. |
+| Survival and return | 40 | Up to 25 for time survived through the Day 13 opening, plus 15 for safe splashdown. |
+| Outpost reserves | 25 | Up to 5 each for 12 power, 8 food, 10 water, 8 oxygen, and 15 materials. At splashdown the base values already exclude ship loading. |
+| Sustainable operations | 15 | 5 each for a steady or rising net power, food, and water rate. |
 | Exploration | 20 | Up to 12 for delivering cache materials toward the 150-material total, plus 8 for visiting the overlook. |
 
 The rating is **Exceptional** at 90+, **Strong** at 75–89, **Solid** at 60–74, and **Needs improvement** below 60. The debrief compares runs against the same rubric.

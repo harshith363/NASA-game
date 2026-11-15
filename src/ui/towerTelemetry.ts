@@ -1,7 +1,7 @@
 import { feeds, type ExternalTelemetry, type FeedId } from '../data/telemetry';
 import { estimateDriveCost, missionSunElevation } from '../mission/lunarSurface';
 import { locations, shelteredCount } from '../mission/lunarCampaign';
-import { missionDay, rates, stormAt, type OutpostState } from '../mission/outpostSimulation';
+import { missionDay, rates, outpostStorm, type OutpostState } from '../mission/outpostSimulation';
 
 const number = new Intl.NumberFormat('en', { maximumFractionDigits:2 });
 const date = new Intl.DateTimeFormat('en-GB',{ dateStyle:'medium',timeStyle:'short',timeZone:'UTC' });
@@ -52,7 +52,7 @@ export function mountTowerTelemetry(button: HTMLButtonElement, host: HTMLElement
   }
   function render(snapshot: OutpostState) {
     const rover = snapshot.campaign.rover;
-    const phase = stormAt(snapshot.elapsed,snapshot.campaign.safetyChecked);
+    const phase = outpostStorm(snapshot);
     const radiation = phase === 'peak' ? 'High outside shelter' : phase === 'warning' ? 'Elevated' : 'Background';
     const inShelter = shelteredCount(snapshot.campaign,snapshot.sheltered);
     const mission = [

@@ -1,6 +1,12 @@
 import { buildings, type Building } from '../data/buildings';
 
-export function mountBuildingControls(onSelect: (building: Building) => void) {
+const surfaceTargets = { rover: 'Rover dock', departure: 'Departure' } as const;
+export type SurfacePanel = keyof typeof surfaceTargets;
+
+export function mountBuildingControls(
+  onSelect: (building: Building, trigger: HTMLButtonElement) => void,
+  onSurface: (panel: SurfacePanel, trigger: HTMLButtonElement) => void,
+) {
   const controls = document.querySelector<HTMLElement>('#building-controls')!;
   const navigation = document.querySelector<HTMLElement>('#facility-tabs')!;
   const markers = {} as Record<Building['id'], HTMLButtonElement>;
@@ -14,10 +20,11 @@ export function mountBuildingControls(onSelect: (building: Building) => void) {
       button.textContent = label;
       button.setAttribute('aria-controls', `${building.id}-panel`);
       button.style.setProperty('--facility-color', `#${building.color.toString(16)}`);
-      button.addEventListener('click', () => onSelect(building));
+      button.addEventListener('click', () => onSelect(building, button));
       return button;
     }
     const marker = markers[building.id] = makeButton(building.name, 'map-marker');
+    marker.dataset.facility = building.id;
     const markerLabel = document.createElement('span');
     markerLabel.className = 'marker-label';
     const status = document.createElement('small');
@@ -33,8 +40,21 @@ export function mountBuildingControls(onSelect: (building: Building) => void) {
     tab.setAttribute('aria-expanded', 'false');
     navigation.append(tab);
   }
+  const surfaceMarkers = {} as Record<SurfacePanel, HTMLButtonElement>;
+  for (const panel of Object.keys(surfaceTargets) as SurfacePanel[]) {
+    const marker = surfaceMarkers[panel] = document.createElement('button');
+    marker.className = 'map-marker surface-marker';
+    marker.hidden = true;
+    marker.type = 'button';
+    marker.dataset.surface = panel;
+    marker.textContent = surfaceTargets[panel];
+    marker.setAttribute('aria-controls', `campaign-${panel}`);
+    marker.setAttribute('aria-expanded', 'false');
+    marker.onclick = () => onSurface(panel, marker);
+    controls.append(marker);
+  }
   return {
-    markers, tabs,
+    markers, surfaceMarkers, tabs,
     select(id?: Building['id']) {
       for (const building of buildings) {
         const active = String(building.id === id);

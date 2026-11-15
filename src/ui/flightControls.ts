@@ -1,6 +1,6 @@
 import { mountUtilityPill } from './utilityPill';
 import { cabinEvidence, artemisEvidence } from './flightEvidence';
-import { labels, phaseCopy, phases, type FlightAction } from '../data/flightScenario';
+import { commandHelp, commandPrerequisites, countdownHelp, labels, phaseCopy, phases, type FlightAction } from '../data/flightScenario';
 import { flightReferences } from '../data/flightReferences';
 import { commitFlight, completeLanding, landingReserve, legalActions, previewFlight, type FlightState } from '../mission/flightMission';
 import { flightSave, flightSaveKey, retryCheckpoint } from '../mission/flightPersistence';
@@ -16,6 +16,40 @@ const sections = [
   { label: 'Moon landing', actions: ['capture', 'checklist', 'land'] },
 ] as const satisfies readonly { label: string; actions: readonly FlightAction[] }[];
 const decisionActions = new Set<FlightAction>(['cool', 'thrusters', 'repair', 'bypass']);
+
+function addCommandHelp(row: HTMLElement, control: HTMLButtonElement, key: string, description: string) {
+  const trigger = document.createElement('button');
+  const help = document.createElement('p');
+  trigger.type = 'button';
+  trigger.className = 'command-help-trigger';
+  trigger.textContent = 'ⓘ';
+  trigger.setAttribute('aria-label', `Help for ${control.textContent}`);
+  help.className = 'command-help-text';
+  help.id = `flight-help-${key}`;
+  help.textContent = description;
+  trigger.setAttribute('aria-controls', help.id);
+  const references = control.getAttribute('aria-describedby');
+  control.setAttribute('aria-describedby', references ? `${references} ${help.id}` : help.id);
+  let pinned = false;
+  function show(visible: boolean) {
+    help.hidden = !visible;
+    trigger.setAttribute('aria-expanded', String(visible));
+  }
+  show(false);
+  row.addEventListener('pointerenter', event => { if (event.pointerType === 'mouse') show(true); });
+  row.addEventListener('pointerleave', () => { if (!pinned && !row.contains(document.activeElement)) show(false); });
+  control.addEventListener('focus', () => show(true));
+  row.addEventListener('focusout', event => {
+    if (!pinned && !row.contains(event.relatedTarget as Node | null) && !row.matches(':hover')) show(false);
+  });
+  trigger.onclick = () => { pinned = !pinned; show(pinned); };
+  row.addEventListener('dismiss-command-help', () => {
+    pinned = false;
+    show(false);
+  });
+  control.after(trigger);
+  row.append(help);
+}
 const instruments = {
   life: {
     prompt: 'O₂ supply is online. Select the system that removes the crew’s exhaled CO₂.',
@@ -41,6 +75,14 @@ const instruments = {
 
 export function mountFlightControls(host: HTMLElement, initial: FlightState, motion: MotionPreference, audio: { flightCue: (cue: FlightCue) => void; pause: (paused: boolean) => void }, finish: (state: FlightState, unsaved: boolean) => Promise<void>, initialStored: string | null) {
   host.classList.add('flight-active');
+  function dismissHelp(event: KeyboardEvent) {
+    if (event.key !== 'Escape') return;
+    const opened = host.querySelectorAll('.flight-command:has(.command-help-trigger[aria-expanded="true"])');
+    if (!opened.length) return;
+    opened.forEach(row => row.dispatchEvent(new Event('dismiss-command-help')));
+    event.preventDefault();
+  }
+  document.addEventListener('keydown', dismissHelp);
   host.setAttribute('aria-labelledby', 'flight-phase-title');
   host.innerHTML = `
     <header class="flight-heading">
@@ -175,6 +217,7 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
       await finish(state, unsaved);
       scene.dispose();
       cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', dismissHelp);
       document.removeEventListener('visibilitychange', visibility);
       window.removeEventListener('storage', storage);
       motion.changes.removeEventListener('change', motionChanged);
@@ -311,8 +354,12 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
       const status = document.createElement('small');
       status.id = `flight-command-${action}-status`;
       control.setAttribute('aria-describedby', status.id);
+      const missing = (commandPrerequisites[action] ?? []).filter(item => !state.startupSystems.includes(item));
       status.textContent = done ? '✓ Done' : alternative ? 'Unused' : exercise === action ? 'Options open'
-        : preview?.allowed && !blocked && !exercise ? 'Ready' : preview && !preview.allowed ? 'Reserve lock' : 'Locked';
+        : preview?.allowed && !blocked && !exercise ? 'Ready' : preview && !preview.allowed ? 'Reserve lock'
+          : state.pendingReport ? 'Acknowledge the current result'
+            : missing.length ? `First complete “${labels[missing[0]]}”` : exercise ? 'Finish the open exercise'
+              : action === 'capture' ? 'First finish the Moon approach' : 'Available at the next flight check';
       row.dataset.command = done ? 'done' : preview?.allowed ? 'ready' : 'locked';
       row.append(control, status);
       if (preview?.allowed) {
@@ -326,7 +373,16 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
           control.setAttribute('aria-describedby', `${status.id} ${charges.id}`);
           row.append(charges);
         }
-      } else if (preview) row.append(preview.reason);
+      } else if (preview) {
+        const reason = document.createElement('p');
+        reason.className = 'command-block-reason';
+        reason.textContent = preview.reason;
+        reason.id = `flight-command-${action}-reason`;
+        control.setAttribute('aria-describedby', `${status.id} ${reason.id}`);
+        row.append(reason);
+      }
+      const help = commandHelp[action];
+      if (help) addCommandHelp(row, control, action, help);
       return row;
     }));
     renderExercise(blocked);
@@ -335,7 +391,14 @@ export function mountFlightControls(host: HTMLElement, initial: FlightState, mot
     if (legal.includes('acknowledge')) secondary.append(makeButton('Acknowledge result', () => act('acknowledge', sequence), blocked));
     const beat = flightBeats[state.phase];
     if (beat) secondary.append(makeButton(motion.reduced ? 'Continue' : 'Skip animation', () => act(beat.next, sequence), blocked));
-    if (state.phase === 'countdown' && state.startupSystems.includes('authorize')) secondary.append(makeButton(paused ? 'Resume countdown' : 'Hold countdown', togglePause, stale));
+    if (state.phase === 'countdown' && state.startupSystems.includes('authorize')) {
+      const row = document.createElement('div');
+      row.className = 'flight-command';
+      const hold = makeButton(paused ? 'Resume countdown' : 'Hold countdown', togglePause, stale);
+      row.append(hold);
+      addCommandHelp(row, hold, 'countdown', countdownHelp);
+      secondary.append(row);
+    }
     const checkpoint = retryCheckpoint(state);
     if (checkpoint && state.phase !== 'outpost') secondary.append(makeButton('Retry checkpoint', () => {
       if (persist(checkpoint)) { feedback = ''; exercise = undefined; render(); }

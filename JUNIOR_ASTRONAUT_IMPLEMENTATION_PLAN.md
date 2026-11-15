@@ -1,6 +1,6 @@
 # Junior Astronaut Mission Trainer
 
-> **Historical reference.** Original two-shift prototype plan. The live campaign now uses continuous mission time, browser saves, and a 15-day departure gate. See the [current game overview](docs/GAME_OVERVIEW.md) and [campaign validation](docs/CAMPAIGN_VALIDATION.md).
+> **Historical reference.** Original two-shift prototype plan. The live campaign now uses continuous mission time, browser saves, and recurring departure windows. See the [current game overview](docs/GAME_OVERVIEW.md) and [campaign validation](docs/CAMPAIGN_VALIDATION.md).
 
 First prototype implementation plan for the NASA Space Apps challenge. A small crew arrives at a lunar outpost and runs its first emergency drill. The player learns how one power budget connects crew safety and tomorrow’s food supply. Target audience is ages 7–12. Target play time is 3–5 minutes, including a skippable opening. [Challenge objectives](https://hackathlone.com/challenges/junior-astronaut-mission-trainer#objectives)
 

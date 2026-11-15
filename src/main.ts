@@ -15,10 +15,13 @@ let entered = false;
 mountFlightIntro(audio, motion, async (saveKey, arrival) => {
   if (entered) return;
   entered = true;
-  const navigation = mountBuildingControls(building => mission?.openBuilding(building));
-  const outpost = mountOutpost(document.querySelector<HTMLElement>('#outpost-canvas')!, navigation.markers, building => mission?.openBuilding(building), motion, plot => mission?.openExpansion(plot));
+  const navigation = mountBuildingControls(
+    (building, trigger) => mission?.openBuilding(building, trigger),
+    (panel, trigger) => mission?.openSurface(panel, trigger),
+  );
+  const outpost = mountOutpost(document.querySelector<HTMLElement>('#outpost-canvas')!, navigation.markers, navigation.surfaceMarkers, motion, plot => mission?.openExpansion(plot));
   const present: PresentMissionEvent = event => { outpost.present(event); audio.present(event); };
-  mission = mountTimedOutpost(outpost.updateFacilities, audio.pause, saveKey, id => { outpost.select(id); navigation.select(id); });
+  mission = mountTimedOutpost(outpost.updateFacilities, audio.pause, saveKey, id => { outpost.select(id); navigation.select(id); }, motion);
   navigation.enable(true);
   await outpost.ready;
   document.querySelector<HTMLElement>('#mission-workspace')!.inert = false;

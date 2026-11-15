@@ -2,7 +2,7 @@
 
 From the timed outpost, open **Communications Centre → Request telemetry** or **Mission Control Tower → Request telemetry**. The report opens on demand and **Request updated report** refreshes it. It contains five mission readings plus up to ten readings from NASA and NOAA.
 
-Each fictional outpost reading carries a **Simulated** badge and follows the mission clock. External readings use their source timestamps in UTC, independently of playback speed. GOES proton flux describes near-Earth conditions. External feeds provide context and do not change the mission’s storm or resource rules.
+Each fictional outpost reading carries a **Simulated** badge and follows the mission clock. External readings use their source timestamps in UTC, independently of playback speed. GOES proton flux describes near-Earth conditions. External feeds provide context. The timed outpost’s storms and equipment incident follow the schedule saved with that run.
 
 ## Simulated mission readings
 
